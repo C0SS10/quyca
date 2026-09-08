@@ -115,14 +115,16 @@ def get_sources_by_entity_pipeline_params() -> dict:
     """
     pipeline_source_params = {
         "source": [
-            "names",
-            "types",
-            "keywords",
-            "publisher",
             "external_ids",
             "external_urls",
-            "subjects",
+            "global_citations_count",
+            "global_products_count",
+            "keywords",
+            "names",
+            "publisher",
             "ranking",
+            "subjects",
+            "types",
         ],
         "collection": "sources",
     }

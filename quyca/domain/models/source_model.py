@@ -49,6 +49,8 @@ class Source(BaseModel):
     date_published: str | int | None = None
     external_ids: list[ExternalId] | None = None
     external_urls: list[ExternalUrl] | None = None
+    global_citations_count: int | None = None
+    global_products_count: int | None = None
     keywords: list[str] | None = None
     languages: list[str] | None = None
     licenses: list[Licence] | None = None
