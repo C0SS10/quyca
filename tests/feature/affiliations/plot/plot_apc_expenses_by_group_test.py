@@ -8,7 +8,7 @@ def test_it_can_plot_apc_expenses_by_group_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/66e087c2011dd4d56dc32bb5/research/products?plot=apc_expenses_by_group"
+        f"/app/affiliation/institution/{random_institution_id}/research/products?plot=apc_expenses_by_group"
     )
     assert response.status_code == 200
 
