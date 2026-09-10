@@ -259,17 +259,19 @@ def get_works_available_filters(pipeline: list, query_params: QueryParams) -> di
         ],
         "countries": pipeline.copy()
         + [
-            {"$match": {"authors.affiliations.addresses.country_code": {"$ne": None}}},
+            {"$match": {"authors.affiliations.addresses.country_code": {"$exists": True, "$ne": None}}},
             {"$project": {"_id": 1, "authors.affiliations.addresses.country_code": 1}},
             {"$unwind": "$authors"},
             {"$unwind": "$authors.affiliations"},
             {"$unwind": "$authors.affiliations.addresses"},
+            {"$match": {"authors.affiliations.addresses.country_code": {"$exists": True, "$ne": None}}},
             {"$group": {"_id": {"work_id": "$_id", "country_code": "$authors.affiliations.addresses.country_code"}}},
             {"$group": {"_id": "$_id.country_code", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
         ],
         "authors_ranking": pipeline.copy()
         + [
+            {"$match": {"authors.ranking.source": "minciencias"}},
             {"$project": {"authors.ranking.source": 1, "authors.ranking.rank": 1}},
             {"$unwind": "$authors"},
             {"$unwind": "$authors.ranking"},
@@ -317,7 +319,7 @@ def get_works_available_filters(pipeline: list, query_params: QueryParams) -> di
         else:
             return key, list(collection.aggregate(pipe))
 
-    with ThreadPoolExecutor(max_workers=7) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(run_pipeline, k, v) for k, v in pipelines.items()]
         for future in as_completed(futures):
             key, result = future.result()
