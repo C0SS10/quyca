@@ -79,10 +79,7 @@ def test_search_sources_with_multiple_source_types(client):
     assert "data" in data
     assert isinstance(data["data"], List)
     assert "total_results" in data
-    assert all(
-        source.get("type") in ["journal", "repository"]
-        for source in data["data"]
-    )
+    assert all(source.get("type") in ["journal", "repository"] for source in data["data"])
 
 
 def test_search_sources_with_source_type_and_keywords(client):
@@ -100,10 +97,7 @@ def test_search_sources_with_source_type_and_keywords(client):
         print("SOURCE:", source)
         print("KEYWORDS:", keywords)
         assert source.get("type") == "journal"
-        assert any(
-            "philosophy" in keyword.lower()
-            for keyword in source.get("keywords", [])
-        )
+        assert any("philosophy" in keyword.lower() for keyword in source.get("keywords", []))
 
 
 def test_search_sources_available_filters(client):

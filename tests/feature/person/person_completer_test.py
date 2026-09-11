@@ -48,9 +48,7 @@ def test_person_completer_empty_options_returns_empty_list(mock_es):
 def test_person_completer_sets_longest_input_as_full_name(mock_es):
     mock_es.search.return_value = {
         "suggest": {
-            "name_suggest": [
-                {"options": [{"_source": {"full_name": {"input": ["John", "John Doe", "J. Doe"]}}}]}
-            ]
+            "name_suggest": [{"options": [{"_source": {"full_name": {"input": ["John", "John Doe", "J. Doe"]}}}]}]
         }
     }
 

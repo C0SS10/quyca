@@ -73,9 +73,7 @@ def test_source_completer_sets_name_publisher_and_products_count(mock_es):
 
 @patch("quyca.infrastructure.repositories.completers.es_database")
 def test_source_completer_applies_defaults_when_fields_missing(mock_es):
-    mock_es.search.return_value = {
-        "suggest": {"source_suggest": [{"options": [{"_id": "1", "_source": {}}]}]}
-    }
+    mock_es.search.return_value = {"suggest": {"source_suggest": [{"options": [{"_id": "1", "_source": {}}]}]}}
 
     result = source_completer("Nat")
 
@@ -91,9 +89,7 @@ def test_get_source_completion_returns_completer_result(mock_completer, client):
     response = client.get(f"{ENDPOINT}/Nat")
 
     assert response.status_code == 200
-    assert response.get_json() == [
-        {"_id": "1", "name": "Nature", "publisher": "Springer", "products_count": 42}
-    ]
+    assert response.get_json() == [{"_id": "1", "name": "Nature", "publisher": "Springer", "products_count": 42}]
     mock_completer.assert_called_once_with("Nat")
 
 
