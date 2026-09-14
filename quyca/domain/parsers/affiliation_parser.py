@@ -27,6 +27,16 @@ def parse_search_result(affiliations: List) -> List[Affiliation]:
 def parse_available_affiliation_filters(filters: dict) -> dict:
     """
     Parses the available affiliation filters from the search results.
+
+    Parameters:
+    -----------
+    filters : dict
+        The available filters to be parsed.
+
+    Returns:
+    --------
+    dict
+        A dictionary containing the parsed available filters.
     """
     available_filters: dict = {}
 
