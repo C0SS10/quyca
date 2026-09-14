@@ -50,9 +50,9 @@ def test_get_csv_works_by_group(client):
 @patch("quyca.domain.services.csv_service.get_works_csv_by_affiliation")
 def test_get_works_csv_by_affiliation_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}/institution/123/research/products/csv")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}
 
@@ -60,9 +60,9 @@ def test_get_works_csv_by_affiliation_returns_400_on_error(mock_service, client)
 @patch("quyca.domain.services.csv_service.get_works_excel_by_affiliation")
 def test_get_works_excel_by_affiliation_success(mock_service, client):
     mock_service.return_value = io.BytesIO(b"fake-excel-bytes")
- 
+
     response = client.get(f"{ENDPOINT}/institution/123/research/products/excel")
- 
+
     assert response.status_code == 200
     assert response.content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     assert response.headers["Content-Disposition"] == "attachment; filename=affiliations.xlsx"
@@ -75,17 +75,17 @@ def test_get_works_excel_by_affiliation_success(mock_service, client):
 @patch("quyca.domain.services.csv_service.get_works_excel_by_affiliation")
 def test_get_works_excel_by_affiliation_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}/institution/123/research/products/excel")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}
- 
- 
+
+
 @patch("quyca.domain.services.csv_service.get_works_excel_by_affiliation")
 def test_get_works_excel_by_affiliation_invalid_query_params_returns_400(mock_service, client):
     response = client.get(f"{ENDPOINT}/institution/123/research/products/excel?max=invalid")
- 
+
     assert response.status_code == 400
     data = response.get_json()
     assert "error" in data

@@ -48,8 +48,8 @@ def test_get_news_by_group(client):
 @patch("quyca.domain.services.news_service.get_news_by_affiliation")
 def test_get_affiliation_research_news_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}/institution/123/research/news")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}

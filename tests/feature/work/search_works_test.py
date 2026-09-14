@@ -31,9 +31,9 @@ def test_search_works_without_keywords_with_filters(client) -> None:
 @patch("quyca.domain.services.work_service.get_search_works_available_filters")
 def test_get_search_works_filters_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}/filters")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}
 
@@ -41,8 +41,8 @@ def test_get_search_works_filters_returns_400_on_error(mock_service, client):
 @patch("quyca.domain.services.work_service.search_works")
 def test_search_works_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}

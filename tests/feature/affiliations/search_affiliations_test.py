@@ -85,8 +85,8 @@ def test_get_search_affiliations_filters_invalid_query_params_returns_400(mock_s
 @patch("quyca.domain.services.affiliation_service.search_affiliations")
 def test_search_affiliations_returns_400_on_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
- 
+
     response = client.get(f"{ENDPOINT}/institution")
- 
+
     assert response.status_code == 400
     assert response.get_json() == {"error": "boom"}
