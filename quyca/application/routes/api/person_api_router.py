@@ -221,7 +221,7 @@ person_api_router = Blueprint("person_api_router", __name__)
 def get_works_by_person_api_expert(person_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = api_expert_service.get_works_by_person(person_id, query_params)
+        data = api_expert_service.get_works_by_person(person_id, query_params, request.url)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)
