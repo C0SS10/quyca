@@ -7,8 +7,9 @@ from quyca.domain.models.base_model import QueryParams
 from quyca.domain.parsers import work_parser
 
 
-
-def build_metadata(works: Generator, total_count: int, query_params: QueryParams, start_time: float, current_url: str) -> dict:
+def build_metadata(
+    works: Generator, total_count: int, query_params: QueryParams, start_time: float, current_url: str
+) -> dict:
     """
     This function builds the metadata for the API expert response.
     """
@@ -31,7 +32,6 @@ def build_metadata(works: Generator, total_count: int, query_params: QueryParams
     }
 
     return {"meta": meta, "data": data}
-
 
 
 def build_cursor(page: int, total_count: int, limit: int, current_url: str) -> dict:
@@ -61,7 +61,6 @@ def build_cursor(page: int, total_count: int, limit: int, current_url: str) -> d
     previous_url = build_url(page - 1) if page > 1 else None
 
     return {"next": next_url, "previous": previous_url}
-
 
 
 def process_works(works: Generator) -> list:
