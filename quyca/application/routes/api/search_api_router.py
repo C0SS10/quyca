@@ -96,7 +96,7 @@ def search_persons() -> WerkzeugResponse:
 def search_works() -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = api_expert_service.search_works(query_params)
+        data = api_expert_service.search_works(query_params, request.url)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)

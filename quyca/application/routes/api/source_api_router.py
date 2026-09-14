@@ -127,7 +127,7 @@ HTTP/1.1 404 Not Found
 def get_research_products(source_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = api_expert_service.get_works_by_source(source_id, query_params)
+        data = api_expert_service.get_works_by_source(source_id, query_params, request.url)
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 404
