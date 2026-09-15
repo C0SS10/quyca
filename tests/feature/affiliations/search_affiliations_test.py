@@ -47,16 +47,20 @@ def test_search_groups_without_keywords(client):
 
 
 @pytest.mark.parametrize("affiliation_type", ["institution", "group"])
-@patch("quyca.domain.services.affiliation_service.get_search_affiliations_available_filters")
-def test_get_search_affiliations_filters_returns_service_result(mock_service, affiliation_type, client):
-    mock_service.return_value = {"states": [{"count": 3, "label": "Antioquia", "value": "Antioquia Department"}]}
-
+def test_get_search_affiliations_filters_returns_service_result(affiliation_type, client):
     response = client.get(f"{ENDPOINT}/{affiliation_type}/filters")
 
     assert response.status_code == 200
-    assert response.get_json() == {"states": [{"count": 3, "label": "Antioquia", "value": "Antioquia Department"}]}
-    args, _ = mock_service.call_args
-    assert args[0] == affiliation_type
+    data = response.get_json()
+
+    assert "states" in data
+    states = data["states"]
+    antioquia = next((s for s in states if s["label"] == "Antioquia"), None)
+
+    assert antioquia is not None, "El estado 'Antioquia' no está en la respuesta"
+    assert isinstance(antioquia["count"], int)
+    assert antioquia["count"] >= 0
+    assert antioquia["value"] == "Antioquia"
 
 
 @patch("quyca.domain.services.affiliation_service.get_search_affiliations_available_filters")
