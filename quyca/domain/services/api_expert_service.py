@@ -41,3 +41,17 @@ def search_works(query_params: QueryParams, current_url: str) -> dict:
     works = api_expert_repository.search_works_for_api_expert(query_params)
     total_count = api_expert_repository.count_works_for_api_expert(query_params)
     return build_metadata(works, total_count, query_params, start_time, current_url)
+
+
+def search_patents(query_params: QueryParams, current_url: str) -> dict:
+    start_time = time.time()
+    patents = api_expert_repository.search_patents_for_api_expert(query_params)
+    total_count = api_expert_repository.count_patents_for_api_expert(query_params)
+    return build_metadata(patents, total_count, query_params, start_time, current_url)
+
+
+def search_projects(query_params: QueryParams, current_url: str) -> dict:
+    start_time = time.time()
+    projects = api_expert_repository.search_projects_for_api_expert(query_params)
+    total_count = api_expert_repository.count_projects_for_api_expert(query_params)
+    return build_metadata(projects, total_count, query_params, start_time, current_url)

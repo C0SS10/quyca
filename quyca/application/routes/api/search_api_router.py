@@ -152,3 +152,57 @@ def search_affiliations(affiliation_type: str) -> WerkzeugResponse:
 def search_sources() -> WerkzeugResponse:
     query_params: Dict[str, Any] = request.args.to_dict()
     return redirect(url_for("router.search_app_router.search_sources", **query_params))
+
+
+""" 
+@api {get} /patents Buscar patentes
+@apiName SearchPatents
+@apiGroup Search
+@apiDescription Busca patentes en el sistema según los filtros y parámetros definidos.
+
+@apiParam (Query Params) {Number{1..250}} [limit] Límite máximo de resultados (alias: `max`).
+@apiParam (Query Params) {Number} [page] Número de página a consultar.
+@apiParam (Query Params) {String} [keywords] Palabras clave para filtrar patentes.
+@apiParam (Query Params) {String} [sort] Criterio de ordenamiento (por ejemplo: `year:desc`).
+
+@apiSuccessExample {json} Success-Response:
+  HTTP/1.1 200 OK
+"""
+
+
+@search_api_router.route("/patents", methods=["GET"])
+def search_patents() -> WerkzeugResponse | Tuple[Response, int]:
+    try:
+        query_params = QueryParams(**request.args)
+        data = api_expert_service.search_patents(query_params, request.url)
+        return jsonify(data)
+    except Exception as e:
+        capture_exception(e)
+        return jsonify({"error": str(e)}), 400
+
+
+""" 
+@api {get} /projects Buscar proyectos
+@apiName SearchProjects
+@apiGroup Search
+@apiDescription Busca proyectos en el sistema según los filtros y parámetros definidos.
+
+@apiParam (Query Params) {Number{1..250}} [limit] Límite máximo de resultados (alias: `max`).
+@apiParam (Query Params) {Number} [page] Número de página a consultar.
+@apiParam (Query Params) {String} [keywords] Palabras clave para filtrar proyectos.
+@apiParam (Query Params) {String} [sort] Criterio de ordenamiento (por ejemplo: `year:desc`).
+
+@apiSuccessExample {json} Success-Response:
+  HTTP/1.1 200 OK
+"""
+
+
+@search_api_router.route("/projects", methods=["GET"])
+def search_projects() -> WerkzeugResponse | Tuple[Response, int]:
+    try:
+        query_params = QueryParams(**request.args)
+        data = api_expert_service.search_projects(query_params, request.url)
+        return jsonify(data)
+    except Exception as e:
+        capture_exception(e)
+        return jsonify({"error": str(e)}), 400
