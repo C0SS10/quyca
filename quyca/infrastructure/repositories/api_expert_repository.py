@@ -7,8 +7,10 @@ from quyca.infrastructure.repositories import base_repository, work_repository
 from quyca.infrastructure.mongo import database
 
 
-def get_work_by_id_for_api_expert(work_id: str) -> dict | None:
-    return database["works"].find_one({"_id": ObjectId(work_id)}, {"_id": 0})
+def get_work_by_id_for_api_expert(work_id: str) -> Generator:
+    pipeline = [{"$match": {"_id": ObjectId(work_id)}}]
+    cursor = database["works"].aggregate(pipeline)
+    return work_generator.get(cursor)
 
 
 def get_works_by_affiliation_for_api_expert(
