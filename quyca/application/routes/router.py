@@ -20,6 +20,7 @@ from quyca.application.routes.api.person_api_router import person_api_router
 from quyca.application.routes.app.source_app_router import source_app_router
 from quyca.application.routes.api.source_api_router import source_api_router
 from quyca.application.routes.app.work_app_router import work_app_router
+from quyca.application.routes.api.work_api_router import work_api_router 
 from quyca.application.routes.docs_router import router as docs_router
 from quyca.application.routes.ping_router import ping_router
 
@@ -59,6 +60,7 @@ router.register_blueprint(source_app_router, url_prefix=f"{settings.APP_URL_PREF
 router.register_blueprint(source_api_router, url_prefix=f"{settings.API_URL_PREFIX}/source")
 
 router.register_blueprint(work_app_router, url_prefix=f"{settings.APP_URL_PREFIX}/work")
+router.register_blueprint(work_api_router, url_prefix=f"{settings.API_URL_PREFIX}/work")
 
 router.register_blueprint(patent_app_router, url_prefix=f"{settings.APP_URL_PREFIX}/patent")
 

@@ -5,6 +5,12 @@ from quyca.domain.parsers.api_expert_parser import build_metadata
 from quyca.infrastructure.repositories import api_expert_repository
 
 
+
+def get_work_by_id(work_id: str) -> dict:
+    work = api_expert_repository.get_work_by_id_for_api_expert(work_id)
+    return work if work is not None else {}
+
+
 def get_works_by_person(person_id: str, query_params: QueryParams, current_url: str) -> dict:
     start_time = time.time()
     works = api_expert_repository.get_works_by_person_for_api_expert(person_id, query_params)
