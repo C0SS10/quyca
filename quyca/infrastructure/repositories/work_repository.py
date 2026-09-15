@@ -400,7 +400,6 @@ def get_works_available_filters(pipeline: list, query_params: QueryParams) -> di
             cursor = collection.aggregate(pipe)
             return key, next(cursor, {"min_year": None, "max_year": None})
         else:
-            print(f"Running pipeline for {key} PIPELINE: {pipe}")
             return key, list(collection.aggregate(pipe))
 
     with ThreadPoolExecutor(max_workers=2) as executor:

@@ -93,10 +93,6 @@ def test_search_sources_with_source_type_and_keywords(client):
     assert "data" in data
     assert "total_results" in data
     for source in data["data"]:
-        keywords = source.get("keywords", [])
-
-        print("SOURCE:", source)
-        print("KEYWORDS:", keywords)
         assert source.get("type") == "journal"
         assert any("philosophy" in keyword.lower() for keyword in source.get("keywords", []))
 
