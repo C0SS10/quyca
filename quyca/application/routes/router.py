@@ -20,7 +20,7 @@ from quyca.application.routes.api.person_api_router import person_api_router
 from quyca.application.routes.app.source_app_router import source_app_router
 from quyca.application.routes.api.source_api_router import source_api_router
 from quyca.application.routes.app.work_app_router import work_app_router
-from quyca.application.routes.api.work_api_router import work_api_router 
+from quyca.application.routes.api.work_api_router import work_api_router
 from quyca.application.routes.docs_router import router as docs_router
 from quyca.application.routes.ping_router import ping_router
 

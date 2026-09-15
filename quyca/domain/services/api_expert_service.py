@@ -5,7 +5,6 @@ from quyca.domain.parsers.api_expert_parser import build_metadata
 from quyca.infrastructure.repositories import api_expert_repository
 
 
-
 def get_work_by_id(work_id: str) -> dict:
     work = api_expert_repository.get_work_by_id_for_api_expert(work_id)
     return work if work is not None else {}
@@ -42,11 +41,11 @@ def get_works_by_source(source_id: str, query_params: QueryParams, current_url: 
     return build_metadata(works, total_count, query_params, start_time, current_url)
 
 
-def search_works(query_params: QueryParams, current_url: str) -> dict:
+def search_works(query_params: QueryParams, current_url: str | None = None) -> dict:
     start_time = time.time()
     works = api_expert_repository.search_works_for_api_expert(query_params)
     total_count = api_expert_repository.count_works_for_api_expert(query_params)
-    return build_metadata(works, total_count, query_params, start_time, current_url)
+    return build_metadata(works, total_count, query_params, start_time, current_url if current_url else "")
 
 
 def search_patents(query_params: QueryParams, current_url: str) -> dict:

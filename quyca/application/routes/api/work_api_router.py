@@ -18,6 +18,7 @@ work_api_router = Blueprint("work_api_router", __name__)
 @apiParam {String} work_id ID del producto bibliográfico.
 """
 
+
 @work_api_router.route("/<work_id>", methods=["GET"])
 def get_work_by_id(work_id: str) -> Response | Tuple[Response, int]:
     data = api_expert_service.get_work_by_id(work_id)
