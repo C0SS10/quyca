@@ -127,12 +127,14 @@ class Work(BaseModel):
     doi: str | None = None
     issue: str | int | None = None
     language: str | None = None
+    minciencias_id: str | None = None
     open_access_status: str | None = None
     product_types: list[ProductType] | None = None
     publisher: str | None = None
     openalex_types: str | None = None
     scienti_types: str | None = None
     impactu_types: str | None = None
+    scienti_id: str | None = None
     scimago_quartile: str | None = None
     source_apc: str | None = None
     source_data: Source | list[Source] | None = None

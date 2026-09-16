@@ -38,6 +38,8 @@ EXPORT_COLUMNS = [
     "publisher",
     "openalex_types",
     "scienti_types",
+    "scienti_id",
+    "minciencias_id",
     "impactu_types",
     "source_name",
     "source_apc",

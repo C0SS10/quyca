@@ -20,6 +20,7 @@ def prepare_work_for_export(work: Work) -> None:
     work_service.set_title_and_language(work)
     set_csv_types(work)
     set_primary_topic(work)
+    set_csv_identifiers(work)
     source_service.update_csv_work_source(work)
 
 
@@ -130,6 +131,24 @@ def set_csv_bibliographic_info(work: Work) -> None:
 def set_csv_authors(work: Work) -> None:
     authors_full_names = [author.full_name for author in work.authors if author.full_name]
     work.authors_csv = " | ".join(sorted(set(authors_full_names)))
+
+
+def set_csv_identifiers(work: Work) -> None:
+    scienti_ids: list[str] = []
+    minciencias_ids: list[str] = []
+
+    for external_id in getattr(work, "external_ids", None) or []:
+        provenance = getattr(external_id, "provenance", None)
+        source = getattr(external_id, "source", None)
+        identifier = getattr(external_id, "id", None)
+        if provenance == "scienti" and source == "scienti" and isinstance(identifier, str):
+            scienti_ids.append(identifier)
+
+        elif provenance == "minciencias" and source == "minciencias" and isinstance(identifier, str):
+            minciencias_ids.append(identifier)
+
+    work.scienti_id = " | ".join(dict.fromkeys(scienti_ids)) if scienti_ids else None
+    work.minciencias_id = " | ".join(dict.fromkeys(minciencias_ids)) if minciencias_ids else None
 
 
 def set_csv_affiliations(work: Work) -> None:
