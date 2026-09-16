@@ -13,6 +13,12 @@ def get_work_by_id_for_api_expert(work_id: str) -> Generator:
     return work_generator.get(cursor)
 
 
+def get_work_by_doi_for_api_expert(work_doi: str) -> Generator:
+    pipeline = [{"$match": {"doi": work_doi}}]
+    cursor = database["works"].aggregate(pipeline)
+    return work_generator.get(cursor)
+
+
 def get_works_by_affiliation_for_api_expert(
     affiliation_id: str,
     query_params: QueryParams,
