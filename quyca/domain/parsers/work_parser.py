@@ -21,6 +21,7 @@ EXPORT_COLUMNS = [
     "countries",
     "groups_ranking",
     "ranking",
+    "contract_type",
     "issue",
     "open_access_status",
     "pages",
@@ -47,7 +48,7 @@ EXPORT_COLUMNS = [
 ]
 
 
-def parse_csv(works: Generator) -> Generator[str, None, None]:
+def parse_csv(works: Generator, person_id: str | None = None) -> Generator[str, None, None]:
     output = StringIO(newline="")
     writer = csv.DictWriter(
         output,
@@ -63,7 +64,7 @@ def parse_csv(works: Generator) -> Generator[str, None, None]:
     output.truncate(0)
 
     for work in works:
-        export_parser.prepare_work_for_export(work)
+        export_parser.prepare_work_for_export(work, person_id)
 
         writer.writerow(work.model_dump(include=SET_EXPORT_COLUMNS))
 
@@ -73,7 +74,8 @@ def parse_csv(works: Generator) -> Generator[str, None, None]:
         output.truncate(0)
 
 
-def parse_excel(works: Generator) -> BytesIO:
+
+def parse_excel(works: Generator, person_id: str | None = None) -> BytesIO:
     output = BytesIO()
 
     workbook = Workbook(write_only=True)
@@ -82,7 +84,7 @@ def parse_excel(works: Generator) -> BytesIO:
     worksheet.append(EXPORT_COLUMNS)
 
     for work in works:
-        export_parser.prepare_work_for_export(work)
+        export_parser.prepare_work_for_export(work, person_id)
 
         row = [export_parser.sanitize_excel_value(getattr(work, column, None)) for column in EXPORT_COLUMNS]
 

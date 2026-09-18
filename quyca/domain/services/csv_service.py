@@ -66,7 +66,7 @@ def get_works_csv_by_person(person_id: str, query_params: QueryParams) -> Genera
     """
     pipeline_params = get_works_project_pipeline_params()
     works = csv_repository.get_works_csv_by_person(person_id, query_params, pipeline_params)
-    return work_parser.parse_csv(works)
+    return work_parser.parse_csv(works, person_id)
 
 
 def get_works_excel_by_person(person_id: str, query_params: QueryParams) -> BytesIO:
@@ -84,7 +84,7 @@ def get_works_excel_by_person(person_id: str, query_params: QueryParams) -> Byte
     """
     pipeline_params = get_works_project_pipeline_params()
     works = csv_repository.get_works_csv_by_person(person_id, query_params, pipeline_params)
-    return work_parser.parse_excel(works)
+    return work_parser.parse_excel(works, person_id)
 
 
 def get_works_csv_by_source(source_id: str, query_params: QueryParams) -> Generator[str, None, None]:
