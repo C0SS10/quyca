@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Dict, Generator, List
 
 from bson import ObjectId
 
@@ -63,18 +63,6 @@ def get_patents_count_by_person(person_id: str) -> int:
     pipeline: List[Dict[str, Any]] = [{"$match": {"authors.id": person_id}}, {"$count": "total"}]
     result = next(database["patents"].aggregate(pipeline), {"total": 0})
     return result.get("total", 0)
-
-
-def search_patents(query_params: QueryParams, pipeline_params: dict | None = None) -> Tuple[Generator, int]:
-    pipeline = [{"$match": {"$text": {"$search": query_params.keywords}}}] if query_params.keywords else []
-    base_repository.set_search_end_stages(pipeline, query_params, pipeline_params)
-    patents = database["patents"].aggregate(pipeline)
-    count_pipeline = [{"$match": {"$text": {"$search": query_params.keywords}}}] if query_params.keywords else []
-    count_pipeline += [
-        {"$count": "total_results"},  # type: ignore
-    ]
-    total_results = next(database["patents"].aggregate(count_pipeline), {"total_results": 0}).get("total_results", 0)
-    return patent_generator.get(patents), total_results
 
 
 def get_patents_by_affiliation_pipeline(affiliation_id: str) -> list:

@@ -1,8 +1,8 @@
-from typing import Any, Dict, Generator, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, Generator, List, Mapping, Sequence
 from bson import ObjectId
 
 from quyca.infrastructure.generators import person_generator
-from quyca.domain.models.base_model import ExternalId, QueryParams
+from quyca.domain.models.base_model import ExternalId
 from quyca.infrastructure.repositories import base_repository
 from quyca.domain.exceptions.not_entity_exception import NotEntityException
 from quyca.domain.models.person_model import Person
@@ -83,62 +83,6 @@ def get_persons_by_affiliation(affiliation_id: str) -> Generator:
     ]
     cursor = database["person"].aggregate(pipeline)
     return person_generator.get(cursor)
-
-
-def search_persons(query_params: QueryParams, pipeline_params: dict | None = None) -> Tuple[Generator, int]:
-    if pipeline_params is None:
-        pipeline_params = {}
-    pipeline: List[Dict[str, Any]] = []
-    if query_params.keywords:
-        pipeline.append({"$match": {"$text": {"$search": query_params.keywords}}})
-
-    pipeline += [
-        {
-            "$addFields": {
-                "logo": {
-                    "$arrayElemAt": [
-                        {
-                            "$map": {
-                                "input": {
-                                    "$filter": {
-                                        "input": {
-                                            "$reduce": {
-                                                "input": "$affiliations",
-                                                "initialValue": [],
-                                                "in": {
-                                                    "$concatArrays": [
-                                                        "$$value",
-                                                        {"$ifNull": ["$$this.external_urls", []]},
-                                                    ]
-                                                },
-                                            }
-                                        },
-                                        "as": "ext",
-                                        "cond": {"$eq": ["$$ext.source", "logo"]},
-                                    }
-                                },
-                                "as": "logo_item",
-                                "in": "$$logo_item.url",
-                            }
-                        },
-                        0,
-                    ]
-                }
-            }
-        }
-    ]
-
-    base_repository.set_search_end_stages(pipeline, query_params, pipeline_params)
-    persons = database["person"].aggregate(pipeline)
-
-    count_pipeline: List[Dict[str, Any]] = []
-    if query_params.keywords:
-        count_pipeline.append({"$match": {"$text": {"$search": query_params.keywords}}})
-    count_pipeline += [
-        {"$count": "total_results"},
-    ]
-    total_results = next(database["person"].aggregate(count_pipeline), {"total_results": 0})["total_results"]
-    return person_generator.get(persons), total_results
 
 
 def get_person_external_ids(person_id: str) -> list[ExternalId]:
