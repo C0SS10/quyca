@@ -1,27 +1,6 @@
 from typing import Any, List
 
 from quyca.domain.constants.colombian_states_cities import AFFILIATION_STATE_MAPPING, AFFILIATION_CITY_MAPPING
-from quyca.domain.models.base_model import Affiliation
-
-
-def parse_search_result(affiliations: List) -> List[Affiliation]:
-    include = [
-        "id",
-        "addresses",
-        "affiliations",
-        "external_ids",
-        "external_urls",
-        "products_count",
-        "citations_count",
-        "h_index",
-        "h5_index",
-        "logo",
-        "name",
-        "types",
-        "products_count",
-        "ranking",
-    ]
-    return [affiliation.model_dump(include=include, exclude_none=True) for affiliation in affiliations]
 
 
 def parse_available_affiliation_filters(filters: dict) -> dict:

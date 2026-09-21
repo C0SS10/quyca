@@ -43,60 +43,6 @@ def parse_source(source: Source) -> dict[str, Any]:
     return dict(source.model_dump(include=include, exclude_none=True))
 
 
-def parse_search_result(sources: List) -> List:
-    """
-    This function use model dumping to extract relevant fields from source entities.
-
-    Parameters:
-    -----------
-    sources : List
-        A List of source entities to be parsed.
-
-    Returns:
-    --------
-    List
-        A List of dictionaries containing the relevant fields from each source entity.
-    """
-    source_fields = [
-        "id",
-        "abbreviations",
-        "addresses",
-        "apc",
-        "citations_count",
-        "copyright",
-        "external_ids",
-        "external_urls",
-        "global_citations_count",
-        "global_products_count",
-        "keywords",
-        "languages",
-        "licenses",
-        "names",
-        "open_access_start_year",
-        "open_access_status",
-        "plagiarism_detection",
-        "publication_time_weeks",
-        "products_count",
-        "publisher",
-        "ranking",
-        "relations",
-        "review_process",
-        "subjects",
-        "scimago_best_quartile",
-        "topics",
-        "type",
-        "updated",
-        "waiver",
-    ]
-    return [
-        source.model_dump(
-            include=source_fields,
-            exclude={"citations_count": {"__all__": {"provenance"}}},
-        )
-        for source in sources
-    ]
-
-
 def parse_available_filters(filters: Dict) -> Dict:
     """
     Parses the available filters from the search results.

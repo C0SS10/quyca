@@ -3,11 +3,12 @@ from io import BytesIO, StringIO
 from openpyxl import Workbook
 from typing import Generator
 
+from quyca.domain.models.work_model import Work
+from quyca.domain.parsers import export_parser
+
 from quyca.domain.constants import countries_iso
 from quyca.domain.constants.open_access_status import open_access_status_dict
 from quyca.domain.constants.product_types import source_titles
-from quyca.domain.models.work_model import Work
-from quyca.domain.parsers import export_parser
 
 
 EXPORT_COLUMNS = [
@@ -93,38 +94,6 @@ def parse_excel(works: Generator, person_id: str | None = None) -> BytesIO:
     output.seek(0)
 
     return output
-
-
-def parse_search_results(works: list) -> list:
-    nested_include = {
-        "id": ...,
-        "authors": {
-            "__all__": {
-                "id": ...,
-                "full_name": ...,
-                "type": ...,
-                "affiliations": {
-                    "__all__": {
-                        "id": ...,
-                        "name": ...,
-                        "types": ...,
-                    }
-                },
-            }
-        },
-        "authors_count": ...,
-        "open_access": ...,
-        "citations_count": ...,
-        "product_types": ...,
-        "year_published": ...,
-        "title": ...,
-        "source": {"id": ..., "name": ...},
-        "external_ids": ...,
-        "ranking": ...,
-        "topics": ...,
-        "citations_count_openalex": ...,
-    }
-    return [work.model_dump(include=nested_include, exclude_none=True) for work in works]
 
 
 def parse_works_by_entity(works: list) -> list:
