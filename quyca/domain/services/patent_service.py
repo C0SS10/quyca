@@ -1,8 +1,8 @@
-from typing import Generator
-
 from quyca.domain.models.base_model import QueryParams
 from quyca.infrastructure.repositories import patent_repository
 from quyca.domain.services.base_service import (
+    build_patents_pipeline_params,
+    get_entity_data,
     set_external_ids,
     set_external_urls,
     set_authors_external_ids,
@@ -31,54 +31,19 @@ def get_patent_authors(patent_id: str) -> dict:
     return {"data": patent.model_dump()["authors"]}
 
 
-def search_patents(query_params: QueryParams) -> dict:
-    pipeline_params = get_patents_by_entity_pipeline_params()
-    patents, total_results = patent_repository.search_patents(query_params, pipeline_params)
-    patents_data = get_patent_by_entity_data(patents)
-    data = patent_parser.parse_search_results(patents_data)
-    return {"data": data, "total_results": total_results}
-
-
 def get_patents_by_affiliation(affiliation_id: str, query_params: QueryParams) -> dict:
-    pipeline_params = get_patents_by_entity_pipeline_params()
+    pipeline_params = build_patents_pipeline_params()
     patents = patent_repository.get_patents_by_affiliation(affiliation_id, query_params, pipeline_params)
-    patents_data = get_patent_by_entity_data(patents)
+    patents_data = get_entity_data(patents)
     data = patent_parser.parse_patents_by_entity(patents_data)
     total_results = patent_repository.get_patents_count_by_affiliation(affiliation_id)
     return {"data": data, "total_results": total_results}
 
 
 def get_patents_by_person(person_id: str, query_params: QueryParams) -> dict:
-    pipeline_params = get_patents_by_entity_pipeline_params()
+    pipeline_params = build_patents_pipeline_params()
     patents = patent_repository.get_patents_by_person(person_id, query_params, pipeline_params)
-    patents_data = get_patent_by_entity_data(patents)
+    patents_data = get_entity_data(patents)
     data = patent_parser.parse_patents_by_entity(patents_data)
     total_results = patent_repository.get_patents_count_by_person(person_id)
     return {"data": data, "total_results": total_results}
-
-
-def get_patent_by_entity_data(patents: Generator) -> list:
-    patents_data = []
-    for patent in patents:
-        limit_authors(patent)
-        set_title_and_language(patent)
-        set_product_types(patent)
-        patents_data.append(patent)
-    return patents_data
-
-
-def get_patents_by_entity_pipeline_params() -> dict:
-    pipeline_params = {
-        "project": [
-            "_id",
-            "author_count",
-            "authors",
-            "types",
-            "titles",
-            "subjects",
-            "external_ids",
-            "external_urls",
-            "authors_data",
-        ]
-    }
-    return pipeline_params
