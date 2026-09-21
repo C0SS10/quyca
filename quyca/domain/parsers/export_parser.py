@@ -8,7 +8,6 @@ from quyca.domain.constants.openalex_types import openalex_types_dict
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
 
-
 def prepare_work_for_export(work: Work, person_id: str | None = None) -> None:
     set_open_access_status(work)
     set_doi(work)
@@ -246,11 +245,7 @@ def set_csv_contract_type(work: Work, person_id: str | None) -> None:
         return
 
     if work.year_published:
-        eligible = [
-            rank
-            for rank in ranks
-            if (year := get_rank_year(rank)) is not None and year <= work.year_published
-        ]
+        eligible = [rank for rank in ranks if (year := get_rank_year(rank)) is not None and year <= work.year_published]
     else:
         eligible = []
 

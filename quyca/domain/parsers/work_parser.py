@@ -74,7 +74,6 @@ def parse_csv(works: Generator, person_id: str | None = None) -> Generator[str, 
         output.truncate(0)
 
 
-
 def parse_excel(works: Generator, person_id: str | None = None) -> BytesIO:
     output = BytesIO()
 
