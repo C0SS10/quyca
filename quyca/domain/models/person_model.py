@@ -114,7 +114,6 @@ class Person(BaseModel):
     h5_index: int | None = None
 
     affiliations_data: list[Affiliation] | None = None
-    logo: str | None = None
     age: int | None = None
 
     @field_validator("external_ids")
