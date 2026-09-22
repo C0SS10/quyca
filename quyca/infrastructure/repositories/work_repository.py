@@ -7,6 +7,7 @@ from quyca.domain.models.base_model import QueryParams
 from quyca.domain.models.work_model import Work
 from quyca.infrastructure.repositories import base_repository
 from quyca.infrastructure.mongo import database
+from quyca.domain.constants.institutions import institutions_list
 from quyca.domain.exceptions.not_entity_exception import NotEntityException
 from quyca.infrastructure.repositories.search.search_work_filters_repository import set_product_filters
 
@@ -158,8 +159,11 @@ def get_works_available_filters_by_person(person_id: str, query_params: QueryPar
     return available_filters
 
 
-def get_works_available_filters_by_affiliation(affiliation_id: str, query_params: QueryParams) -> dict:
-    pipeline = [{"$match": {"authors.affiliations.id": affiliation_id}}]
+def get_works_available_filters_by_affiliation(
+    affiliation_id: str, affiliation_type: str, query_params: QueryParams
+) -> dict:
+    types = institutions_list if affiliation_type == "institution" else [affiliation_type]
+    pipeline = [{"$match": {"authors.affiliations.id": affiliation_id}}, {"$match": {"types.type": {"$in": types}}}]
     set_product_filters(pipeline, query_params)
     available_filters = {}
     collection = database["works"]
