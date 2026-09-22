@@ -4,27 +4,12 @@ from quyca.domain.constants.colombian_states_cities import AFFILIATION_STATE_MAP
 
 
 def parse_available_affiliation_filters(filters: dict) -> dict:
-    """
-    Parses the available affiliation filters from the search results.
-
-    Parameters:
-    -----------
-    filters : dict
-        The available filters to be parsed.
-
-    Returns:
-    --------
-    dict
-        A dictionary containing the parsed available filters.
-    """
     available_filters: dict = {}
 
     if states := filters.get("states"):
         available_filters["states"] = parse_affiliation_state_filter(states)
-
     if cities := filters.get("cities"):
         available_filters["cities"] = parse_affiliation_city_filter(cities)
-
     if rankings := filters.get("groups_ranking"):
         available_filters["groups_ranking"] = parse_affiliation_ranking_filter(rankings)
 
@@ -49,10 +34,6 @@ def parse_affiliation_location_filter(
     locations: List[dict[str, Any]],
     mapping: dict[str, str],
 ) -> List[dict[str, int | str]]:
-    """
-    Normalizes affiliation locations and aggregates counts
-    for values that resolve to the same label.
-    """
     normalized_locations: dict[str, dict[str, int | str]] = {}
 
     for location in locations:
@@ -93,9 +74,6 @@ def parse_affiliation_location_filter(
 def parse_affiliation_ranking_filter(
     rankings: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """
-    Parses affiliation ranking filters into the expected format.
-    """
     parsed_rankings = []
 
     for ranking in rankings:

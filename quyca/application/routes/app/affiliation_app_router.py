@@ -7,13 +7,12 @@ from sentry_sdk import capture_exception
 from quyca.domain.models.base_model import QueryParams
 from quyca.domain.services import (
     work_service,
-    affiliation_service,
     project_service,
-    affiliation_plot_service,
-    csv_service,
     patent_service,
     news_service,
 )
+from quyca.domain.services.affiliation import affiliation_plot_service, affiliation_service
+from quyca.domain.services.export import export_affiliation_plot_service, export_service
 
 affiliation_app_router = Blueprint("affiliation_app_router", __name__)
 
@@ -106,7 +105,7 @@ def get_affiliation_research_products_filters(
 ) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = work_service.get_works_filters_by_affiliation(affiliation_id, query_params)
+        data = work_service.get_works_filters_by_affiliation(affiliation_id, affiliation_type, query_params)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)
@@ -120,7 +119,7 @@ def get_affiliation_research_products_filters(
 @apiVersion 1.0.0
 @apiDescription Obtiene los productos bibliográficos de una afiliación en formato CSV.
 
-@apiParam {String} affiliation_type Tipo de afiliación (ej. "institution", "department").
+@apiParam {String} affiliation_type Tipo de afiliación (ej. "institution", "department", "faculty", "group").
 @apiParam {String} affiliation_id ID de la afiliación.
 """
 
@@ -129,7 +128,12 @@ def get_affiliation_research_products_filters(
 def get_works_csv_by_affiliation(affiliation_type: str, affiliation_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_csv_by_affiliation(affiliation_id, affiliation_type, query_params)
+        if query_params.plot:
+            data = export_affiliation_plot_service.get_plot_csv(affiliation_id, affiliation_type, query_params)
+            response = Response(stream_with_context(data), content_type="text/csv; charset=utf-8")
+            response.headers["Content-Disposition"] = f'attachment; filename="{query_params.plot}.csv"'
+            return response
+        data = export_service.get_works_csv_by_affiliation(affiliation_id, affiliation_type, query_params)
         response = Response(stream_with_context(data), content_type="text/csv; charset=utf-8")
         response.headers["Content-Disposition"] = "attachment; filename=affiliations.csv"
         return response
@@ -154,7 +158,7 @@ def get_works_csv_by_affiliation(affiliation_type: str, affiliation_id: str) -> 
 def get_works_excel_by_affiliation(affiliation_type: str, affiliation_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_excel_by_affiliation(
+        data = export_service.get_works_excel_by_affiliation(
             affiliation_id,
             affiliation_type,
             query_params,
