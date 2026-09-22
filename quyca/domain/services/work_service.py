@@ -53,8 +53,10 @@ def get_works_by_affiliation(affiliation_id: str, query_params: QueryParams) -> 
     return {"data": data, "total_results": total_results}
 
 
-def get_works_filters_by_affiliation(affiliation_id: str, query_params: QueryParams) -> dict:
-    available_filters = work_repository.get_works_available_filters_by_affiliation(affiliation_id, query_params)
+def get_works_filters_by_affiliation(affiliation_id: str, affiliation_type: str, query_params: QueryParams) -> dict:
+    available_filters = work_repository.get_works_available_filters_by_affiliation(
+        affiliation_id, affiliation_type, query_params
+    )
     return work_parser.parse_available_filters(available_filters)
 
 

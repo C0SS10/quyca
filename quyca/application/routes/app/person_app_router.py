@@ -9,10 +9,10 @@ from quyca.domain.services import (
     person_service,
     project_service,
     person_plot_service,
-    csv_service,
     patent_service,
     news_service,
 )
+from quyca.domain.services.export import export_service
 
 person_app_router = Blueprint("person_app_router", __name__)
 
@@ -99,7 +99,7 @@ def get_person_research_products_filters(person_id: str) -> Response | Tuple[Res
 def get_works_csv_by_person(person_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_csv_by_person(person_id, query_params)
+        data = export_service.get_works_csv_by_person(person_id, query_params)
         response = Response(stream_with_context(data), content_type="text/csv")
         response.headers["Content-Disposition"] = "attachment; filename=person_works.csv"
         return response
@@ -123,7 +123,7 @@ def get_works_csv_by_person(person_id: str) -> Response | Tuple[Response, int]:
 def get_works_excel_by_person(person_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_excel_by_person(person_id, query_params)
+        data = export_service.get_works_excel_by_person(person_id, query_params)
         response = Response(
             data.getvalue(),
             content_type=("application/vnd.openxmlformats-officedocument." "spreadsheetml.sheet"),

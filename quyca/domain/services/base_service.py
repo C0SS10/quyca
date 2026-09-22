@@ -6,7 +6,7 @@ from quyca.domain.constants.external_urls import external_urls_dict
 from quyca.domain.models.base_model import Title, ProductType, ExternalUrl, Type
 from quyca.domain.models.patent_model import Patent
 from quyca.domain.models.project_model import Project
-from quyca.domain.models.work_model import Work
+from quyca.domain.models.work_model import Work, Source as WorkSource
 from quyca.infrastructure.repositories import affiliation_repository, person_repository
 from quyca.domain.constants.sensitive_data import SENSITIVE_ID_SOURCES
 
@@ -217,6 +217,46 @@ def set_logo(affiliation: Affiliation, relation: Relation) -> None:
         )
         if logo_url:
             affiliation.logo = str(logo_url)
+
+
+def update_csv_work_source(work: Work) -> None:
+    if not work.source:
+        return
+
+    source = work.source
+    work.source_name = str(source.name) if source.name else None
+    if source.apc and source.apc.charges and source.apc.currency:
+        work.source_apc = f"{source.apc.charges} / {source.apc.currency}"
+    else:
+        work.source_apc = None
+
+    set_source_urls(work, source)
+    set_scimago_quartile(work, source)
+
+
+def set_source_urls(work: Work, source: WorkSource) -> None:
+    if source.external_urls:
+        urls = {str(url.url) for url in source.external_urls if url.url}
+        work.source_urls = " | ".join(urls) if urls else None
+    else:
+        work.source_urls = None
+
+
+def set_scimago_quartile(work: Work, source: WorkSource) -> None:
+    work.scimago_quartile = None
+    if source.ranking and work.date_published:
+        for ranking in source.ranking:
+            condition = (
+                ranking.source == "scimago Best Quartile"
+                and ranking.rank
+                and ranking.rank != "-"
+                and isinstance(ranking.from_date, int)
+                and isinstance(ranking.to_date, int)
+                and ranking.from_date <= work.date_published <= ranking.to_date
+            )
+            if condition:
+                work.scimago_quartile = str(ranking.rank)
+                break
 
 
 def build_work_pipeline_params() -> dict:

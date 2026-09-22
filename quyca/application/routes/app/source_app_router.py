@@ -3,7 +3,8 @@ from flask import Blueprint, Response, jsonify, request
 from sentry_sdk import capture_exception
 
 from quyca.domain.models.base_model import QueryParams
-from quyca.domain.services import csv_service, source_plot_service, source_service, work_service
+from quyca.domain.services import source_plot_service, source_service, work_service
+from quyca.domain.services.export import export_service
 
 
 source_app_router = Blueprint("source_app_router", __name__)
@@ -435,7 +436,7 @@ Content-Disposition: attachment; filename=source.csv
 def get_works_csv_by_source(source_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_csv_by_source(source_id, query_params)
+        data = export_service.get_works_csv_by_source(source_id, query_params)
         response = Response(data, content_type="text/csv")
         response.headers["Content-Disposition"] = "attachment; filename=source_works.csv"
         return response
@@ -464,7 +465,7 @@ Content-Disposition: attachment; filename=source_works.xlsx
 def get_works_excel_by_source(source_id: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = csv_service.get_works_excel_by_source(source_id, query_params)
+        data = export_service.get_works_excel_by_source(source_id, query_params)
         response = Response(
             data.getvalue(),
             content_type=("application/vnd.openxmlformats-officedocument." "spreadsheetml.sheet"),
