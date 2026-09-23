@@ -31,9 +31,9 @@ def get_patent_authors(patent_id: str) -> dict:
     return {"data": patent.model_dump()["authors"]}
 
 
-def get_patents_by_affiliation(affiliation_id: str, query_params: QueryParams) -> dict:
+def get_patents_by_affiliation(affiliation_id: str, affiliation_type: str, query_params: QueryParams) -> dict:
     pipeline_params = build_patents_pipeline_params()
-    patents = patent_repository.get_patents_by_affiliation(affiliation_id, query_params, pipeline_params)
+    patents = patent_repository.get_patents_by_affiliation(affiliation_id, affiliation_type, query_params, pipeline_params)
     patents_data = get_entity_data(patents)
     data = patent_parser.parse_patents_by_entity(patents_data)
     total_results = patent_repository.get_patents_count_by_affiliation(affiliation_id)

@@ -7,6 +7,7 @@ from quyca.domain.models.base_model import QueryParams
 from quyca.domain.models.patent_model import Patent
 from quyca.infrastructure.repositories import base_repository
 from quyca.infrastructure.mongo import database
+from quyca.domain.constants.institutions import institutions_list
 from quyca.domain.exceptions.not_entity_exception import NotEntityException
 
 
@@ -19,17 +20,16 @@ def get_patent_by_id(patent_id: str) -> Patent:
 
 def get_patents_by_affiliation(
     affiliation_id: str,
+    affiliation_type: str,
     query_params: QueryParams,
     pipeline_params: dict | None = None,
 ) -> Generator:
+    types = institutions_list if affiliation_type == "institution" else [affiliation_type]
     if pipeline_params is None:
         pipeline_params = {}
     pipeline = [
-        {
-            "$match": {
-                "authors.affiliations.id": affiliation_id,
-            },
-        },
+        {"$match": {"authors.affiliations.id": affiliation_id}},
+        {"$match": {"authors.affiliations.types.type": {"$in": types}}}
     ]
     if sort := query_params.sort:
         base_repository.set_sort(sort, pipeline)

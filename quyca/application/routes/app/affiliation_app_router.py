@@ -190,7 +190,7 @@ def get_works_excel_by_affiliation(affiliation_type: str, affiliation_id: str) -
 def get_affiliation_research_patents(affiliation_id: str, affiliation_type: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = patent_service.get_patents_by_affiliation(affiliation_id, query_params)
+        data = patent_service.get_patents_by_affiliation(affiliation_id, affiliation_type,query_params)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)
@@ -213,7 +213,7 @@ def get_affiliation_research_patents(affiliation_id: str, affiliation_type: str)
 def get_affiliation_research_projects(affiliation_id: str, affiliation_type: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = project_service.get_projects_by_affiliation(affiliation_id, query_params)
+        data = project_service.get_projects_by_affiliation(affiliation_id, affiliation_type, query_params)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)
@@ -233,23 +233,6 @@ def get_affiliation_research_projects(affiliation_id: str, affiliation_type: str
 
 @affiliation_app_router.route("/<affiliation_type>/<affiliation_id>/research/news")
 def get_affiliation_research_news(affiliation_id: str, affiliation_type: str) -> Response | Tuple[Response, int]:
-    """
-    Flask route to retrieve news for a given affiliation ID.
-
-    Parses query parameters, retrieves the corresponding news from the service layer,
-    and returns the data as a JSON response.
-
-    Route:
-    ------
-    GET /affiliations/<affiliation_type>/<affiliation_id>/research/news
-
-    Parameters:
-    -----------
-    affiliation_id : str
-        The ID of the affiliation for which news is being retrieved.
-    affiliation_type : str
-        The type of the affiliation (e.g., "institution", "department").
-    """
     try:
         query_params = QueryParams(**request.args)
         data = news_service.get_news_by_affiliation(affiliation_id, affiliation_type, query_params)
