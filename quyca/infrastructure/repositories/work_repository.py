@@ -165,7 +165,7 @@ def get_works_available_filters_by_affiliation(
     types = institutions_list if affiliation_type == "institution" else [affiliation_type]
     pipeline = [
         {"$match": {"authors.affiliations.id": affiliation_id}},
-        {"$match": {"authors.affiliations.types.type": {"$in": types}}}
+        {"$match": {"authors.affiliations.types.type": {"$in": types}}},
     ]
     set_product_filters(pipeline, query_params)
     available_filters = {}

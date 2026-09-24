@@ -29,7 +29,7 @@ def get_patents_by_affiliation(
         pipeline_params = {}
     pipeline = [
         {"$match": {"authors.affiliations.id": affiliation_id}},
-        {"$match": {"authors.affiliations.types.type": {"$in": types}}}
+        {"$match": {"authors.affiliations.types.type": {"$in": types}}},
     ]
     if sort := query_params.sort:
         base_repository.set_sort(sort, pipeline)

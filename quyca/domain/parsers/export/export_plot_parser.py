@@ -330,7 +330,11 @@ def parse_articles_by_scimago_quartile(works: Generator) -> Iterator[dict[str, A
             continue
         source_rankings = getattr(work.source, "ranking", None) or []
         for ranking in source_rankings:
-            if ranking.source in valid_sources and ranking.rank != "-" and ranking.from_date <= work_date <= ranking.to_date:
+            if (
+                ranking.source in valid_sources
+                and ranking.rank != "-"
+                and ranking.from_date <= work_date <= ranking.to_date
+            ):
                 quartiles.append(ranking.rank)
                 break
 

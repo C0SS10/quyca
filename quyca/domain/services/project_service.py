@@ -33,7 +33,9 @@ def get_project_authors(project_id: str) -> dict:
 
 def get_projects_by_affiliation(affiliation_id: str, affiliation_type: str, query_params: QueryParams) -> dict:
     pipeline_params = build_projects_pipeline_params()
-    projects = project_repository.get_projects_by_affiliation(affiliation_id, affiliation_type, query_params, pipeline_params)
+    projects = project_repository.get_projects_by_affiliation(
+        affiliation_id, affiliation_type, query_params, pipeline_params
+    )
     projects_data = get_entity_data(projects)
     data = project_parser.parse_projects_by_entity(projects_data)
     total_results = project_repository.get_projects_count_by_affiliation(affiliation_id)

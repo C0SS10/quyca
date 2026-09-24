@@ -190,7 +190,7 @@ def get_works_excel_by_affiliation(affiliation_type: str, affiliation_id: str) -
 def get_affiliation_research_patents(affiliation_id: str, affiliation_type: str) -> Response | Tuple[Response, int]:
     try:
         query_params = QueryParams(**request.args)
-        data = patent_service.get_patents_by_affiliation(affiliation_id, affiliation_type,query_params)
+        data = patent_service.get_patents_by_affiliation(affiliation_id, affiliation_type, query_params)
         return jsonify(data)
     except Exception as e:
         capture_exception(e)

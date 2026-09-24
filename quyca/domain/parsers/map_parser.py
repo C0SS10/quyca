@@ -101,11 +101,11 @@ def parse_coauthorship_by_country_map(data: list) -> dict:
     countries = aggregate_coauthorship_by_country(data)
     for country_data in countries.values():
         country_data["log_count"] = log(country_data["count"])
- 
+
     worldmap_path = os.path.join(os.path.dirname(__file__), "concerns/worldmap.json")
     with open(worldmap_path, "r") as worldmap_file:
         plot = json.load(worldmap_file)
- 
+
     for feature in plot["features"]:
         country_code = feature["properties"].get("country_code")
         if country_code in countries:
@@ -116,17 +116,17 @@ def parse_coauthorship_by_country_map(data: list) -> dict:
             feature["properties"]["count"] = 0
             feature["properties"]["log_count"] = 0
     return {"plot": plot}
- 
- 
+
+
 def get_coauthorship_by_colombian_department_map(data: list) -> dict:
     states = aggregate_coauthorship_by_colombian_department(data)
     for state_data in states.values():
         state_data["log_count"] = log(state_data["count"])
- 
+
     colombiamap_path = os.path.join(os.path.dirname(__file__), "concerns/colombiamap.json")
     with open(colombiamap_path, "r") as colombiamap_file:
         plot = json.load(colombiamap_file)
- 
+
     for feature in plot["features"]:
         state = feature["properties"]["NOMBRE_DPT"].capitalize()
         if "bogota" in state.lower():
