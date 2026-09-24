@@ -46,6 +46,14 @@ def get_affiliations_scienti_works_count_by_institution(
                     "type": "$types.type",
                     "name": "$authors.affiliations.name",
                 },
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "type": "$_id.type",
+                    "name": "$_id.name",
+                },
                 "works_count": {"$sum": 1},
             }
         },
