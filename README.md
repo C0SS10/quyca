@@ -91,7 +91,10 @@ make logs-prod # follow the logs
 ## Running tests
 
 ```bash
-make tests-dev    # to run the tests
+make tests-unit-dev     # unit tests: no network and no real database
+make tests-feature-dev  # integration tests: read-only against the dev database
+make tests-dev          # both, in separate processes
+make coverage-dev       # both, with the combined coverage report
 ```
 
 could be the same for prod with
@@ -99,6 +102,8 @@ could be the same for prod with
 ```bash
 make tests-prod    # to run the tests
 ```
+
+See docs/testing/guia-de-pruebas.md.
 
 ### Format the code
 
@@ -139,6 +144,10 @@ http://colav.udea.edu.co/
 ## Business Rules
 
 - Staff validation and normalization: docs/business-rules/staff-validation-normalization.md
+
+## Testing
+
+- Testing guide: docs/testing/guia-de-pruebas.md
 
 ## Conventions
 

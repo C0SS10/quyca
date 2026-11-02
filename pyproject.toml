@@ -36,12 +36,32 @@ pre-commit = "^4.3.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
+pytest-cov = "^7.1.0"
+mongomock = "^4.3.0"
 
 [tool.mypy]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 mypy_path = "."
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+# `pytest` a secas corre solo las pruebas unitarias, que no tocan nada real.
+testpaths = ["tests/unit"]
+addopts = "-ra --strict-markers --strict-config"
+required_plugins = ["pytest-cov>=7.1"]
+xfail_strict = true
+markers = ["real_bcrypt: usa el costo de bcrypt de producción en vez del mínimo (lento)"]
+
+[tool.coverage.run]
+branch = true
+source = ["quyca"]
+
+[tool.coverage.report]
+skip_empty = true
+exclude_also = ["if __name__ == .__main__.:"]
 
 [build-system]
 requires = ["poetry-core"]
