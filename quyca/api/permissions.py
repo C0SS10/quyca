@@ -4,6 +4,7 @@ from typing import Any, Callable
 from flask_jwt_extended import get_jwt, get_jwt_identity, verify_jwt_in_request
 
 from quyca.exceptions import ForbiddenException, UnauthorizedException
+from quyca.services import auth_service
 
 View = Callable[..., Any]
 
@@ -11,7 +12,7 @@ MISSING_TOKEN_MESSAGE = "Token no proporcionado o inválido. Por favor, inicia s
 
 
 def get_session_email(missing_token_message: str = MISSING_TOKEN_MESSAGE) -> str:
-    """Email of the session; raises UnauthorizedException when there is no valid token."""
+    """Email of the session; raises UnauthorizedException without a valid token and ForbiddenException without an active account."""
     try:
         verify_jwt_in_request()
     except Exception as e:
@@ -19,7 +20,11 @@ def get_session_email(missing_token_message: str = MISSING_TOKEN_MESSAGE) -> str
     email = get_jwt_identity()
     if not isinstance(email, str) or not email.strip():
         raise UnauthorizedException("Identidad de sesión inválida")
-    return email.strip().lower()
+    email = email.strip().lower()
+    # A valid token is not enough: the account may have been deactivated after it was issued.
+    if not auth_service.is_user_active(email):
+        raise ForbiddenException("La cuenta está desactivada o ya no existe.")
+    return email
 
 
 def require_admin(view: View) -> View:

@@ -2,6 +2,10 @@ class ConflictException(Exception):
     """The change collides with existing data (the email or institution already has a user). HTTP 409."""
 
 
+class EmailDeliveryException(Exception):
+    """The email with the credentials could not be sent, so nothing was saved. HTTP 502."""
+
+
 class ForbiddenException(Exception):
     """The session is valid but may not do this (not admin, another user's account, deactivated). HTTP 403."""
 
