@@ -158,10 +158,13 @@ def regenerate_apikey(email: str, new_apikey: Dict[str, Any]) -> None:
 
 
 def update_apikey_expiration(email: str, new_expiration: int | None) -> None:
-    """Updates only the apikey.expires field."""
-    result = users_collection.update_one({"email": email.lower()}, {"$set": {"apikey.expires": new_expiration}})
+    """Updates only the apikey.expires field of a user that has an API key."""
+    # Without the filter Mongo fails on `apikey: null` and creates a key without id when the field is absent.
+    result = users_collection.update_one(
+        {"email": email.lower(), "apikey": {"$ne": None}}, {"$set": {"apikey.expires": new_expiration}}
+    )
     if result.matched_count == 0:
-        raise NotEntityException(f"Usuario {email} no encontrado")
+        raise NotEntityException(f"Usuario {email} no encontrado o sin API key")
 
 
 def delete_apikey(email: str) -> None:
