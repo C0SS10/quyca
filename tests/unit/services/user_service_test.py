@@ -333,14 +333,14 @@ class TestExpirationRules:
     )
     def test_rejects(self, frozen_time: int, expires: Any, message: str) -> None:
         with pytest.raises(InvalidParamException, match=message):
-            user_service._validate_apikey_expiration(expires)
+            user_service.validate_apikey_expiration(expires)
 
     @pytest.mark.parametrize(
         "expires",
         [pytest.param(None, id="sin-expiracion"), pytest.param(NOW + ONE_DAY, id="exactamente-un-dia")],
     )
     def test_accepts(self, frozen_time: int, expires: int | None) -> None:
-        user_service._validate_apikey_expiration(expires)
+        user_service.validate_apikey_expiration(expires)
 
 
 class TestCreatePayloadRules:
@@ -357,13 +357,13 @@ class TestCreatePayloadRules:
     )
     def test_rejects(self, payload: dict, message: str) -> None:
         with pytest.raises(InvalidParamException, match=message):
-            user_service._validate_create_user_payload(payload)
+            user_service.validate_create_user_payload(payload)
 
     def test_accepts_exactly_the_required_fields(self) -> None:
-        user_service._validate_create_user_payload(PAYLOAD)
+        user_service.validate_create_user_payload(PAYLOAD)
 
 
-@pytest.mark.parametrize("generate", [user_service._generate_password, user_service._generate_apikey_id])
+@pytest.mark.parametrize("generate", [user_service.generate_password, user_service.generate_apikey_id])
 class TestGenerators:
     def test_length_and_alphabet(self, generate: Any) -> None:
         value = generate()

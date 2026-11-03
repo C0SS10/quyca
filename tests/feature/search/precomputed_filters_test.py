@@ -11,10 +11,10 @@ FILTERS = {"years": {"min_year": 1900, "max_year": 2026}, "status": [{"_id": "go
 
 @pytest.fixture()
 def database():
-    repository._GLOBAL_FILTERS_CACHE.clear()
+    repository.GLOBAL_FILTERS_CACHE.clear()
     with patch.object(repository, "database", MagicMock()) as mocked:
         yield mocked
-    repository._GLOBAL_FILTERS_CACHE.clear()
+    repository.GLOBAL_FILTERS_CACHE.clear()
 
 
 def test_global_filters_are_read_from_the_filters_collection(database):

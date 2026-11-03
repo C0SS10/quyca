@@ -69,8 +69,8 @@ def _deny_network(*args: Any, **kwargs: Any) -> NoReturn:
 
 
 # Se reemplaza durante todo el proceso, no en un fixture: el cliente de Mongo abre hilos apenas se importa.
-socket.socket.connect = _deny_network
-socket.socket.connect_ex = _deny_network
+socket.socket.connect = _deny_network  # type: ignore[method-assign]
+socket.socket.connect_ex = _deny_network  # type: ignore[method-assign]
 socket.create_connection = _deny_network
 socket.getaddrinfo = _deny_network
 
@@ -78,6 +78,7 @@ import bcrypt
 import mongomock
 from flask import Flask
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
 
 from quyca.app import create_app
 from quyca.clients import gmail
@@ -88,6 +89,7 @@ from quyca.services import user_service
 NOW = 1_800_000_000
 ONE_DAY = 86_400
 ADMIN_EMAIL = "admin@colav.co"
+ADMIN_PASSWORD = "Clave-Admin-1"
 USER_EMAIL = "ana@udea.edu.co"
 USER_PASSWORD = "Clave-Original-1"
 
@@ -185,3 +187,29 @@ def app() -> Flask:
 def client(app: Flask) -> Iterator[FlaskClient]:
     with app.test_client() as test_client:
         yield test_client
+
+
+def sign_in(client: FlaskClient, email: str, password: str) -> TestResponse:
+    return client.post("/login", json={"email": email, "password": password})
+
+
+def csrf_headers(client: FlaskClient) -> dict[str, str]:
+    """Encabezado que exige CSRF en las peticiones que modifican algo; vacío si no hay sesión."""
+    cookie = client.get_cookie("csrf_access_token")
+    return {"X-CSRF-TOKEN": cookie.value} if cookie else {}
+
+
+@pytest.fixture()
+def as_admin(client: FlaskClient, seed_user: SeedUser) -> FlaskClient:
+    """Cliente con la sesión de un administrador."""
+    seed_user(ADMIN_EMAIL, ADMIN_PASSWORD, role="Admin")
+    assert sign_in(client, ADMIN_EMAIL, ADMIN_PASSWORD).status_code == 200
+    return client
+
+
+@pytest.fixture()
+def as_user(client: FlaskClient, seed_user: SeedUser) -> FlaskClient:
+    """Cliente con la sesión de un usuario de institución."""
+    seed_user()
+    assert sign_in(client, USER_EMAIL, USER_PASSWORD).status_code == 200
+    return client
