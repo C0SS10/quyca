@@ -53,15 +53,6 @@ def handle_scienti_upload(
             "msg": "Tipo de archivo no permitido. Los formatos soportados son: .zip, .rar, .7z, .tar, .gz, .tgz, .bz2, .tar.gz y .tar.bz2.",
         }, 415
 
-    notify_result = notification_service.send_scienti_compressed_received(
-        role=str(role),
-        institution=institution,
-        filename=filename,
-        upload_date=upload_date,
-        email=email,
-        ror_id=ror_id,
-    )
-
     file.stream.seek(0)
 
     save_result = file_repository.save_file(file=file, ror_id=ror_id, institution=institution, file_type="scienti")
@@ -72,6 +63,16 @@ def handle_scienti_upload(
             "msg": "Archivo recibido pero falló el guardado",
             "storage_error": save_result,
         }, 500
+
+    # Only after saving: the email tells the user the file was received.
+    notify_result = notification_service.send_scienti_compressed_received(
+        role=str(role),
+        institution=institution,
+        filename=filename,
+        upload_date=upload_date,
+        email=email,
+        ror_id=ror_id,
+    )
 
     if not notify_result.get("success", False):
         return {
