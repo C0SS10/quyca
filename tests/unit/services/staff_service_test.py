@@ -113,6 +113,26 @@ def test_save_staff_usecase_uses_same_folder_with_original_prefix() -> None:
     assert second_call.kwargs.get("filename_prefix", "") == ""
 
 
+def test_save_staff_files_accepts_a_filename_with_a_slash() -> None:
+    """The name comes from the upload: a '/' in it broke the old temporary /tmp path and answered 500."""
+    save_file = MagicMock(return_value={"success": True, "msg": "ok"})
+    df = pd.DataFrame({"Unnamed: 0": [0], "name": ["Ada"]})
+
+    with patch("quyca.repositories.file_repository.save_file", save_file):
+        result = staff_service.save_staff_files(
+            ror_id="u1",
+            institution="Test Institution",
+            original_filename="carpeta/staff.xlsx",
+            df_original=df,
+            df_normalized=df,
+        )
+
+    assert result["success"] is True
+    storage = save_file.call_args_list[0].args[0]
+    assert storage.filename == "carpeta/staff.xlsx"
+    assert pd.read_excel(storage.stream).to_dict("records") == [{"name": "Ada"}]
+
+
 def test_staff_process_uploads_annotated_excel_on_column_errors() -> None:
     report_service = MagicMock()
     notification_service = MagicMock()

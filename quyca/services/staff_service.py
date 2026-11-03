@@ -309,8 +309,7 @@ def _has_nombre_completo(df: pd.DataFrame) -> bool:
 
 
 def _dataframe_to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
-    """Converts a DataFrame to a FileStorage writing to a temp file first,
-    so FileStorage.save() reads from a real file-backed stream."""
+    """Converts a DataFrame to an in-memory .xlsx FileStorage."""
     df_to_save = df.copy()
     artifact_cols = [
         col
@@ -320,15 +319,8 @@ def _dataframe_to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
     if artifact_cols:
         df_to_save = df_to_save.drop(columns=artifact_cols)
 
-    tmp_path = f"/tmp/_staff_fs_{os.getpid()}_{filename}"
-    try:
-        df_to_save.to_excel(tmp_path, index=False, engine="openpyxl")
-        with open(tmp_path, "rb") as f:
-            data = f.read()
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-    buffer = io.BytesIO(data)
+    # In memory: the filename comes from the upload, and a '/' in it broke the old /tmp path.
+    buffer = io.BytesIO()
+    df_to_save.to_excel(buffer, index=False, engine="openpyxl")
     buffer.seek(0)
     return FileStorage(stream=buffer, filename=filename, content_type=XLSX_MIME)
