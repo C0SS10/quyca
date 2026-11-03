@@ -47,6 +47,22 @@ def test_apc_search_without_keywords_returns_csv_with_expected_header(client):
     assert next(reader) == FIELDNAMES
 
 
+def test_apc_search_without_keywords_is_paginated(client):
+    response = client.get(f"{ENDPOINT}/search?max=25&page=10")
+
+    rows = list(csv.reader(io.StringIO(response.get_data(as_text=True))))
+    assert response.status_code == 200
+    assert rows[0] == FIELDNAMES
+    assert len(rows) == 26
+
+
+def test_apc_search_without_keywords_rejects_pages_after_the_tenth(client):
+    response = client.get(f"{ENDPOINT}/search?max=25&page=11")
+
+    assert response.status_code == 400
+    assert "first 10 pages" in response.get_json()["error"]
+
+
 def test_apc_search_invalid_query_params_returns_400(client):
     url = f"{ENDPOINT}/search?max=invalid"
 
@@ -79,4 +95,6 @@ def test_apc_affiliation_unknown_id_returns_csv_header_only(client):
     assert response.status_code == 200
     assert response.content_type == "text/csv"
     assert response.headers["Content-Disposition"] == "attachment; filename=affiliation.csv"
-    assert response.get_data(as_text=True) == ",".join(FIELDNAMES) + "\n"
+    reader = csv.reader(io.StringIO(response.get_data(as_text=True)))
+    assert next(reader) == FIELDNAMES
+    assert list(reader) == []

@@ -3,7 +3,7 @@ from flask.testing import FlaskClient
 import csv
 import io
 from bson import ObjectId
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 random_source_with_products = database["sources"].find_one(
     {"products_count": {"$gt": 100, "$lt": 400}}, sort=[("products_count", -1)]
@@ -15,7 +15,7 @@ def test_get_source_products_csv_basic(client: FlaskClient) -> None:
     response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
-    assert response.content_type == "text/csv"
+    assert response.content_type == "text/csv; charset=utf-8"
 
 
 def test_get_source_products_csv_headers(client: FlaskClient) -> None:
@@ -25,7 +25,7 @@ def test_get_source_products_csv_headers(client: FlaskClient) -> None:
     assert "Content-Disposition" in response.headers
     assert "attachment" in response.headers["Content-Disposition"]
     assert "filename=source_works.csv" in response.headers["Content-Disposition"]
-    assert response.content_type == "text/csv"
+    assert response.content_type == "text/csv; charset=utf-8"
 
 
 def test_get_source_products_csv_content_structure(client: FlaskClient) -> None:

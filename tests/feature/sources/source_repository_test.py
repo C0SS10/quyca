@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from quyca.infrastructure.repositories.search.search_source_filters_repository import (
+from quyca.repositories.search_source_filters_repository import (
     set_scimago_quartiles,
     set_apc_range,
     set_open_access_routes,

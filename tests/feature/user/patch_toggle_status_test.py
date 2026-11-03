@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 from flask.testing import FlaskClient
 from typing import Any, cast
 
-ROUTER_MOD = "quyca.application.routes.app.user_crud_app_router"
+ROUTER_MOD = "quyca.api.user_crud_router"
 
 
 def auth_cookie(client: FlaskClient, role: str = "admin") -> None:
@@ -34,7 +34,7 @@ def test_toggle_status_success(client: FlaskClient) -> None:
     usecase_mock = Mock()
     usecase_mock.activate_user.return_value = {"success": True, "msg": "Estado actualizado"}
 
-    with patch(f"{ROUTER_MOD}.usecase", usecase_mock):
+    with patch(f"{ROUTER_MOD}.user_service", usecase_mock):
         resp = client.patch("/admin/users/x@x.com/restore")
 
     assert resp.status_code == 200

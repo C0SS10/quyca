@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from unittest.mock import patch
 
 ENDPOINT = "/affiliation"
@@ -44,11 +44,11 @@ def test_get_projects_by_group(client):
     assert response.status_code == 200
 
 
-@patch("quyca.domain.services.project.project_service.get_projects_by_affiliation")
-def test_get_affiliation_research_projects_returns_400_on_error(mock_service, client):
+@patch("quyca.services.project_service.get_projects_by_affiliation")
+def test_get_affiliation_research_projects_returns_500_on_unexpected_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
 
     response = client.get(f"{ENDPOINT}/institution/123/research/projects")
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "boom"}
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Internal server error"}

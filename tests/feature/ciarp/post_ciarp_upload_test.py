@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 from flask.testing import FlaskClient
 
-from quyca.domain.validators.ciarp_validator import CiarpValidator
+from quyca.validators import ciarp_validator
 
 
 def auth_cookie(client: FlaskClient) -> None:
@@ -41,7 +41,7 @@ def test_ciarp_upload_invalid_token(client: FlaskClient) -> None:
 def test_ciarp_upload_with_invalid_columns(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = (
             {
                 "success": False,
@@ -68,7 +68,7 @@ def test_ciarp_upload_with_invalid_columns(client: FlaskClient) -> None:
 def test_ciarp_upload_empty_file(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "msg": "El archivo cargado está vacío. Verifique que contenga información."},
             400,
@@ -88,7 +88,7 @@ def test_ciarp_upload_empty_file(client: FlaskClient) -> None:
 def test_ciarp_upload_success(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = (
             {"success": True, "errors": 0, "duplicates": 1, "pdf_base64": "JVBERi0xLjQKJ..."},
             200,
@@ -119,7 +119,7 @@ def test_ciarp_upload_no_file(client: FlaskClient) -> None:
 def test_ciarp_upload_with_errors(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "errors": 3, "duplicates": 0, "pdf_base64": "JVBERi0xLjQKJ..."},
             400,
@@ -140,7 +140,7 @@ def test_ciarp_upload_with_errors(client: FlaskClient) -> None:
 def test_ciarp_upload_with_duplicates(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = (
             {"success": True, "errors": 0, "duplicates": 2, "pdf_base64": "JVBERi0xLjQKJ..."},
             200,
@@ -160,7 +160,7 @@ def test_ciarp_upload_with_duplicates(client: FlaskClient) -> None:
 def test_ciarp_upload_email_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.ciarp_app_router.CiarpService.handle_ciarp_upload") as mock_service:
+    with patch("quyca.services.ciarp_service.handle_ciarp_upload") as mock_service:
         mock_service.return_value = ({"success": False, "msg": "Fallo al enviar correo"}, 500)
 
         response = client.post(
@@ -199,7 +199,7 @@ def test_ciarp_validate_columns_rejects_ligature_headers() -> None:
         ]
     )
 
-    valid, errors, usecols = CiarpValidator.validate_columns(df)
+    valid, errors, usecols = ciarp_validator.validate_columns(df)
 
     assert valid is False
     assert any("Columnas faltantes" in error for error in errors)
@@ -234,7 +234,7 @@ def test_ciarp_validate_columns_ignores_extra_columns() -> None:
         ]
     )
 
-    valid, errors, usecols = CiarpValidator.validate_columns(df)
+    valid, errors, usecols = ciarp_validator.validate_columns(df)
 
     assert valid is True
     assert errors == []
@@ -243,7 +243,7 @@ def test_ciarp_validate_columns_ignores_extra_columns() -> None:
 
 
 def test_ciarp_validate_row_accepts_numeric_text_identification_and_year() -> None:
-    result = CiarpValidator.validate_row(
+    result = ciarp_validator.validate_row(
         {
             "código_unidad_académica": "FAC-UNAULA-001",
             "código_subunidad_académica": "12201",

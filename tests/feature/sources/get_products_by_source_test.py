@@ -1,5 +1,5 @@
 import pytest
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from flask.testing import FlaskClient
 
 random_source_with_products = database["sources"].find_one(
@@ -168,7 +168,8 @@ def test_get_source_products_invalid_object_id(client: FlaskClient) -> None:
     invalid_id = "invalid_id_123"
     response = client.get(f"/source/{invalid_id}/products?max=10&page=1")
 
-    assert response.status_code in [400, 404]
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid id 'invalid_id_123'."}
 
 
 def test_get_source_products_without_params(client: FlaskClient) -> None:

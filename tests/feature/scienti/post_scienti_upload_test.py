@@ -44,7 +44,7 @@ def test_scienti_upload_no_file(client: FlaskClient) -> None:
 def test_scienti_upload_with_invalid_extension(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {
                 "success": False,
@@ -68,7 +68,7 @@ def test_scienti_upload_with_invalid_extension(client: FlaskClient) -> None:
 def test_scienti_upload_success(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {
                 "success": True,
@@ -93,7 +93,7 @@ def test_scienti_upload_success(client: FlaskClient) -> None:
 def test_scienti_upload_save_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "msg": "Archivo recibido pero falló el guardado"},
             500,
@@ -113,7 +113,7 @@ def test_scienti_upload_save_failed(client: FlaskClient) -> None:
 def test_scienti_upload_email_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "msg": "Fallo al enviar correo de confirmación"},
             500,

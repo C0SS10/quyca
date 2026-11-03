@@ -8,16 +8,13 @@ import pandas as pd
 from flask.testing import FlaskClient
 from werkzeug.datastructures import FileStorage
 
-from quyca.application.services.staff_service import StaffService, StaffUploadError, StaffUploadResult
-from quyca.application.usecases.process_staff_file import ProcessStaffFileUseCase
-from quyca.application.usecases.save_staff_file import SaveStaffFileUseCase
-from quyca.domain.models.staff_report_model import StaffReport
-from quyca.domain.normalizers.staff_normalizer_service import StaffNormalizerService
-from quyca.domain.validators.name_validator import NameValidator
-from quyca.domain.validators.staff_validator import StaffValidator
-from quyca.domain.validators.unit_validator import UnitValidator
-from quyca.domain.services.submit.staff_report_service import StaffReportService
-from quyca.infrastructure.repositories.pdf_repository import PDFRepository
+from quyca.models.staff_report_model import StaffReport
+from quyca.normalizers import staff_normalizer
+from quyca.validators import name_validator
+from quyca.validators import staff_validator
+from quyca.validators import unit_validator
+from quyca.services import staff_service
+from quyca.files import pdf_report
 
 
 def auth_cookie(client: FlaskClient) -> None:
@@ -54,8 +51,8 @@ def test_staff_upload_invalid_token(client: FlaskClient) -> None:
 def test_staff_upload_with_invalid_columns(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {
                 "success": False,
                 "errors": 1,
@@ -63,7 +60,7 @@ def test_staff_upload_with_invalid_columns(client: FlaskClient) -> None:
                 "msg": "El archivo enviado no cumple con el formato requerido de columnas",
                 "details": ["Columna sin nombre en posición 20"],
             },
-            StaffUploadError.UNPROCESSABLE_ENTITY,
+            422,
         )
 
         response = client.post(
@@ -81,10 +78,10 @@ def test_staff_upload_with_invalid_columns(client: FlaskClient) -> None:
 def test_staff_upload_empty_file(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {"success": False, "msg": "El archivo cargado está vacío. Verifique que contenga información."},
-            StaffUploadError.BAD_REQUEST,
+            400,
         )
 
         response = client.post(
@@ -101,10 +98,10 @@ def test_staff_upload_empty_file(client: FlaskClient) -> None:
 def test_staff_upload_success(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {"success": True, "errors": 0, "duplicates": 1, "pdf_base64": "JVBERi0xLjQKJ..."},
-            None,
+            200,
         )
 
         response = client.post(
@@ -139,15 +136,17 @@ def test_staff_service_persists_files_on_success() -> None:
         "msg_normalized": "Archivo staff guardado correctamente.",
     }
 
-    service = StaffService(process_usecase, save_usecase)
     file = FileStorage(stream=io.BytesIO(b"excel-content"), filename="staff.xlsx")
     claims = {"sub": "test@test.com", "_id": "u1", "institution": "TestInstitution", "role": "admin"}
 
-    outcome = service.handle_staff_upload(file, claims, "27/05/2026 12:00")
+    with patch.object(staff_service, "process_staff_file", process_usecase.execute), patch.object(
+        staff_service, "save_staff_files", save_usecase.execute
+    ):
+        payload, status = staff_service.handle_staff_upload(file, claims, "27/05/2026 12:00")
 
-    assert outcome.error is None
-    assert outcome.payload["success"] is True
-    assert outcome.payload["file_msg"] == "Archivo staff guardado correctamente."
+    assert status == 200
+    assert payload["success"] is True
+    assert payload["file_msg"] == "Archivo staff guardado correctamente."
     save_usecase.execute.assert_called_once()
 
 
@@ -181,16 +180,18 @@ def test_staff_service_hides_changelog_and_exposes_unique_normalized_count() -> 
         "msg_normalized": "Archivo staff guardado correctamente.",
     }
 
-    service = StaffService(process_usecase, save_usecase)
     file = FileStorage(stream=io.BytesIO(b"excel-content"), filename="staff.xlsx")
     claims = {"sub": "test@test.com", "_id": "u1", "institution": "TestInstitution", "role": "admin"}
 
-    outcome = service.handle_staff_upload(file, claims, "27/05/2026 12:00")
+    with patch.object(staff_service, "process_staff_file", process_usecase.execute), patch.object(
+        staff_service, "save_staff_files", save_usecase.execute
+    ):
+        payload, status = staff_service.handle_staff_upload(file, claims, "27/05/2026 12:00")
 
-    assert outcome.error is None
-    assert outcome.payload["success"] is True
-    assert outcome.payload["normalized_unique_values_count"] == 10
-    assert "changelog" not in outcome.payload
+    assert status == 200
+    assert payload["success"] is True
+    assert payload["normalized_unique_values_count"] == 10
+    assert "changelog" not in payload
 
 
 def test_save_staff_usecase_uses_same_folder_with_original_prefix() -> None:
@@ -200,16 +201,16 @@ def test_save_staff_usecase_uses_same_folder_with_original_prefix() -> None:
         {"success": True, "msg": "Archivo staff guardado correctamente."},
     ]
 
-    usecase = SaveStaffFileUseCase(file_repo)
     df = pd.DataFrame({"name": ["Ada"]})
 
-    result = usecase.execute(
-        ror_id="u1",
-        institution="Test Institution",
-        original_filename="staff.xlsx",
-        df_original=df,
-        df_normalized=df,
-    )
+    with patch("quyca.repositories.file_repository.save_file", file_repo.save_file):
+        result = staff_service.save_staff_files(
+            ror_id="u1",
+            institution="Test Institution",
+            original_filename="staff.xlsx",
+            df_original=df,
+            df_normalized=df,
+        )
 
     assert result["success"] is True
     assert file_repo.save_file.call_count == 2
@@ -224,10 +225,10 @@ def test_save_staff_usecase_uses_same_folder_with_original_prefix() -> None:
 def test_staff_upload_storage_failure_returns_500(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {"success": False, "msg": "Error al guardar el archivo", "pdf_base64": "JVBERi0xLjQKJ..."},
-            StaffUploadError.INTERNAL_ERROR,
+            500,
         )
 
         response = client.post(
@@ -253,21 +254,28 @@ def test_staff_process_uploads_annotated_excel_on_column_errors() -> None:
     report_service.xlsx_exporter.to_excel_bytes.return_value = excel_bytes
     notification_service.send_report.return_value = {"success": True}
 
-    usecase = ProcessStaffFileUseCase(report_service, notification_service)
-
     source = io.BytesIO()
     pd.DataFrame({"foo": ["bar"]}).to_excel(source, index=False, engine="openpyxl")
     source.seek(0)
 
-    result = usecase.execute(
-        source,
-        institution="TestInstitution",
-        filename="staff.xlsx",
-        upload_date="27/05/2026 12:00",
-        user="admin",
-        email="test@test.com",
-        ror_id="u1",
-    )
+    with patch(
+        "quyca.files.pdf_report.generate_quality_report",
+        report_service.pdf_repo.generate_quality_report,
+    ), patch("quyca.files.annotator.annotate", report_service.annotator.annotate), patch(
+        "quyca.files.xlsx_writer_exporter.to_excel_bytes",
+        report_service.xlsx_exporter.to_excel_bytes,
+    ), patch(
+        "quyca.services.notification_service.send_report", notification_service.send_report
+    ):
+        result = staff_service.process_staff_file(
+            source,
+            institution="TestInstitution",
+            filename="staff.xlsx",
+            upload_date="27/05/2026 12:00",
+            user="admin",
+            email="test@test.com",
+            ror_id="u1",
+        )
 
     assert result["success"] is False
     report_service.pdf_repo.generate_quality_report.assert_called_once()
@@ -292,7 +300,7 @@ def test_staff_report_service_attaches_excel_even_when_clean() -> None:
     xlsx_exporter.to_excel_bytes.return_value = io.BytesIO(b"excel-bytes")
 
     with patch(
-        "quyca.domain.services.staff_report_service.StaffValidator.validate_dataframe",
+        "quyca.validators.staff_validator.validate_dataframe",
         return_value=StaffReport(
             total_errors=0,
             total_duplicates=0,
@@ -303,14 +311,19 @@ def test_staff_report_service_attaches_excel_even_when_clean() -> None:
             duplicates=[],
         ),
     ):
-        service = StaffReportService(pdf_repo, annotator, xlsx_exporter)
-        report, attachments = service.generate_report(
-            pd.DataFrame({"identificación": ["1"]}),
-            "TestInstitution",
-            "staff.xlsx",
-            "27/05/2026 12:00",
-            "admin",
-        )
+        with patch(
+            "quyca.files.pdf_report.generate_quality_report",
+            pdf_repo.generate_quality_report,
+        ), patch(
+            "quyca.files.annotator.annotate", annotator.annotate
+        ), patch("quyca.files.xlsx_writer_exporter.to_excel_bytes", xlsx_exporter.to_excel_bytes):
+            report, attachments = staff_service.generate_staff_report(
+                pd.DataFrame({"identificación": ["1"]}),
+                "TestInstitution",
+                "staff.xlsx",
+                "27/05/2026 12:00",
+                "admin",
+            )
 
     assert report.total_errors == 0
     assert pdf_repo.generate_quality_report.call_count == 0
@@ -330,7 +343,7 @@ def test_staff_report_service_attaches_pdf_when_normalizations_exist() -> None:
     pdf_repo.generate_quality_report.return_value = io.BytesIO(b"pdf-bytes")
 
     with patch(
-        "quyca.domain.services.staff_report_service.StaffValidator.validate_dataframe",
+        "quyca.validators.staff_validator.validate_dataframe",
         return_value=StaffReport(
             total_errors=0,
             total_duplicates=0,
@@ -341,23 +354,28 @@ def test_staff_report_service_attaches_pdf_when_normalizations_exist() -> None:
             duplicates=[],
         ),
     ):
-        service = StaffReportService(pdf_repo, annotator, xlsx_exporter)
-        report, attachments = service.generate_report(
-            pd.DataFrame({"identificación": ["1"]}),
-            "TestInstitution",
-            "staff.xlsx",
-            "27/05/2026 12:00",
-            "admin",
-            normalized_changes=[
-                {
-                    "columna": "categoría_laboral",
-                    "valor_original": "Profesor Titular",
-                    "valor_normalizado": "profesor titular",
-                    "fila": 0,
-                    "fila_excel": 2,
-                }
-            ],
-        )
+        with patch(
+            "quyca.files.pdf_report.generate_quality_report",
+            pdf_repo.generate_quality_report,
+        ), patch(
+            "quyca.files.annotator.annotate", annotator.annotate
+        ), patch("quyca.files.xlsx_writer_exporter.to_excel_bytes", xlsx_exporter.to_excel_bytes):
+            report, attachments = staff_service.generate_staff_report(
+                pd.DataFrame({"identificación": ["1"]}),
+                "TestInstitution",
+                "staff.xlsx",
+                "27/05/2026 12:00",
+                "admin",
+                normalized_changes=[
+                    {
+                        "columna": "categoría_laboral",
+                        "valor_original": "Profesor Titular",
+                        "valor_normalizado": "profesor titular",
+                        "fila": 0,
+                        "fila_excel": 2,
+                    }
+                ],
+            )
 
     assert report.total_errors == 0
     assert pdf_repo.generate_quality_report.call_count == 1
@@ -374,6 +392,9 @@ def test_staff_validate_columns_allows_space_variants_and_ignores_extras() -> No
             "primer_apellido",
             "segundo_apellido",
             "nombres",
+            "orcid",
+            "cvlac",
+            "scholar",
             "nivel_académico",
             "tipo_contrato",
             "jornada_laboral",
@@ -390,7 +411,7 @@ def test_staff_validate_columns_allows_space_variants_and_ignores_extras() -> No
         ]
     )
 
-    valid, errors, usecols = StaffValidator.validate_columns(df)
+    valid, errors, usecols = staff_validator.validate_columns(df)
 
     assert valid is True
     assert errors == []
@@ -401,7 +422,7 @@ def test_staff_validate_columns_allows_space_variants_and_ignores_extras() -> No
 
 
 def test_name_validator_allows_unicode_letters() -> None:
-    errors = NameValidator.validate(
+    errors = name_validator.validate(
         {"primer_apellido": "gömez", "segundo_apellido": "d'croz", "nombres": "Renée"},
         0,
     )
@@ -410,7 +431,7 @@ def test_name_validator_allows_unicode_letters() -> None:
 
 
 def test_name_validator_rejects_symbols_and_digits() -> None:
-    errors = NameValidator.validate(
+    errors = name_validator.validate(
         {"primer_apellido": "gömez!", "segundo_apellido": "d'croz", "nombres": "Renée2"},
         0,
     )
@@ -428,13 +449,12 @@ def test_unit_validator_accepts_alphanumeric_hyphen_codes() -> None:
         "subunidad_académica": "Especialización en Cirugía Plástica: Reconstructiva y Estética",
     }
 
-    errors = UnitValidator.validate(row, 0)
+    errors = unit_validator.validate(row, 0)
 
     assert errors == []
 
 
 def test_staff_normalizer_maps_new_investigator_categories() -> None:
-    normalizer = StaffNormalizerService()
     df = pd.DataFrame(
         {
             "categoría_laboral": [
@@ -451,7 +471,7 @@ def test_staff_normalizer_maps_new_investigator_categories() -> None:
         }
     )
 
-    mapped_df, changelog = normalizer.map_values(df)
+    mapped_df, changelog = staff_normalizer.map_values(df)
 
     assert mapped_df["categoría_laboral"].tolist() == [
         "instructor asociado",
@@ -468,7 +488,6 @@ def test_staff_normalizer_maps_new_investigator_categories() -> None:
 
 
 def test_staff_normalizer_formats_datetime_values() -> None:
-    normalizer = StaffNormalizerService()
     df = pd.DataFrame(
         {
             "fecha_nacimiento": [pd.Timestamp("1983-08-02")],
@@ -477,7 +496,7 @@ def test_staff_normalizer_formats_datetime_values() -> None:
         }
     )
 
-    cleaned = normalizer.clean(df)
+    cleaned = staff_normalizer.clean(df)
 
     assert cleaned.loc[0, "fecha_nacimiento"] == "02/08/1983"
     assert cleaned.loc[0, "fecha_inicial_vinculación"] == "15/08/2021"
@@ -485,7 +504,6 @@ def test_staff_normalizer_formats_datetime_values() -> None:
 
 
 def test_staff_normalizer_coerces_safe_numeric_text_fields() -> None:
-    normalizer = StaffNormalizerService()
     df = pd.DataFrame(
         {
             "identificación": ["168"],
@@ -494,7 +512,7 @@ def test_staff_normalizer_coerces_safe_numeric_text_fields() -> None:
         }
     )
 
-    cleaned = normalizer.clean(df)
+    cleaned = staff_normalizer.clean(df)
 
     assert cleaned.loc[0, "identificación"] == 168
     assert cleaned.loc[0, "código_unidad_académica"] == "12100"
@@ -503,17 +521,16 @@ def test_staff_normalizer_coerces_safe_numeric_text_fields() -> None:
 
 
 def test_staff_normalizer_coerces_float_like_identification_text() -> None:
-    normalizer = StaffNormalizerService()
     df = pd.DataFrame({"identificación": ["168.0"]})
 
-    cleaned = normalizer.clean(df)
+    cleaned = staff_normalizer.clean(df)
 
     assert cleaned.loc[0, "identificación"] == 168
     assert cleaned["identificación"].dtype.kind in {"i", "u"}
 
 
 def test_document_validator_accepts_float_like_numeric_identification() -> None:
-    errors = StaffValidator.validate_row(
+    errors = staff_validator.validate_row(
         {
             "tipo_documento": "cédula de ciudadanía",
             "identificación": "168.0",
@@ -540,7 +557,6 @@ def test_document_validator_accepts_float_like_numeric_identification() -> None:
 
 
 def test_pdf_report_includes_normalization_section() -> None:
-    pdf_repo = PDFRepository()
     captured: dict[str, str] = {}
 
     def fake_create_pdf(src: Any, dest: Any) -> Any:
@@ -548,8 +564,8 @@ def test_pdf_report_includes_normalization_section() -> None:
         dest.write(b"pdf-bytes")
         return type("Result", (), {"err": False})()
 
-    with patch("quyca.infrastructure.repositories.pdf_repository.pisa.CreatePDF", side_effect=fake_create_pdf):
-        pdf_repo.generate_quality_report(
+    with patch("quyca.files.pdf_report.pisa.CreatePDF", side_effect=fake_create_pdf):
+        pdf_report.generate_quality_report(
             errors=[],
             warnings=[],
             duplicados=[],
@@ -589,10 +605,10 @@ def test_staff_upload_no_file(client: FlaskClient) -> None:
 def test_staff_upload_with_errors(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {"success": False, "errors": 3, "duplicates": 0, "pdf_base64": "JVBERi0xLjQKJ..."},
-            StaffUploadError.BAD_REQUEST,
+            400,
         )
 
         response = client.post(
@@ -610,10 +626,10 @@ def test_staff_upload_with_errors(client: FlaskClient) -> None:
 def test_staff_upload_with_duplicates(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
-        mock_service.return_value = StaffUploadResult(
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
+        mock_service.return_value = (
             {"success": True, "errors": 0, "duplicates": 2, "pdf_base64": "JVBERi0xLjQKJ..."},
-            None,
+            200,
         )
 
         response = client.post(
@@ -630,7 +646,7 @@ def test_staff_upload_with_duplicates(client: FlaskClient) -> None:
 def test_staff_upload_email_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.staff_app_router.StaffService.handle_staff_upload") as mock_service:
+    with patch("quyca.services.staff_service.handle_staff_upload") as mock_service:
         mock_service.side_effect = Exception("Email service down")
 
         response = client.post(
@@ -659,14 +675,13 @@ def test_staff_required_fields_is_lax_for_non_core_columns() -> None:
         "categoría_laboral": "",
     }
 
-    result = StaffValidator.validate_row(row, 0)
+    result = staff_validator.validate_row(row, 0)
     required_empty_errors = [e for e in result["errors"] if e.get("detalle") == "Campo obligatorio vacío"]
 
     assert required_empty_errors == []
 
 
 def test_staff_normalizer_maps_out_of_catalog_to_desconocido_and_hides_cosmetic_changes() -> None:
-    normalizer = StaffNormalizerService()
     df = pd.DataFrame(
         {
             "categoría_laboral": ["Profesor Investigador Titular", "Rol inventado"],
@@ -674,7 +689,7 @@ def test_staff_normalizer_maps_out_of_catalog_to_desconocido_and_hides_cosmetic_
         }
     )
 
-    mapped_df, changelog = normalizer.map_values(df)
+    mapped_df, changelog = staff_normalizer.map_values(df)
 
     assert mapped_df["categoría_laboral"].tolist() == ["profesor investigador titular", "desconocido"]
     assert mapped_df["sexo"].tolist() == ["hombre", "desconocido"]
@@ -710,7 +725,7 @@ def test_staff_validator_treats_desconocido_dates_as_warning_not_error() -> None
         "subunidad_académica": "",
     }
 
-    result = StaffValidator.validate_row(row, 0)
+    result = staff_validator.validate_row(row, 0)
 
     assert not any(e.get("columna") in {"fecha_nacimiento", "fecha_final_vinculación"} for e in result["errors"])
     assert any(w.get("columna") == "fecha_nacimiento" for w in result["warnings"])
@@ -738,7 +753,7 @@ def test_staff_validator_accepts_catalog_aliases_and_desconocido_without_noise()
         "subunidad_académica": "",
     }
 
-    result = StaffValidator.validate_row(row, 0)
+    result = staff_validator.validate_row(row, 0)
 
     assert not any(
         w.get("columna") in {"nivel_académico", "tipo_contrato", "categoría_laboral", "sexo"}
@@ -747,7 +762,7 @@ def test_staff_validator_accepts_catalog_aliases_and_desconocido_without_noise()
 
 
 def test_file_repository_fallback_local(tmp_path: Path) -> None:
-    from quyca.infrastructure.repositories.file_repository import FileRepository
+    from quyca.repositories import file_repository
 
     class DummyDriveRepo:
         def get_or_create_folder(self, *args: Any, **kwargs: Any) -> str:
@@ -756,7 +771,7 @@ def test_file_repository_fallback_local(tmp_path: Path) -> None:
         def upload_file(self, *args: Any, **kwargs: Any) -> str:
             raise Exception("Drive unavailable")
 
-    file_repo = FileRepository(cast(Any, DummyDriveRepo()))
+    drive = DummyDriveRepo()
 
     dummy_file = FileStorage(
         stream=io.BytesIO(b"test content"),
@@ -767,8 +782,11 @@ def test_file_repository_fallback_local(tmp_path: Path) -> None:
     app = flask.Flask(__name__)
     app.config["LOCAL_STORAGE_PATH"] = str(tmp_path)
 
-    with app.app_context():
-        result = file_repo.save_file(dummy_file, "123", "TestInstitution", "staff")
+    with app.app_context(), patch("quyca.clients.google_drive.get_service", return_value=MagicMock()), patch(
+        "quyca.clients.google_drive.get_or_create_folder",
+        drive.get_or_create_folder,
+    ), patch("quyca.clients.google_drive.upload_file", drive.upload_file):
+        result = file_repository.save_file(dummy_file, "123", "TestInstitution", "staff")
 
     assert result["success"] is True
     assert "almacenamiento local" in result["msg"]

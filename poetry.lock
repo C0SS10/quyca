@@ -1045,24 +1045,6 @@ files = [
 ]
 
 [[package]]
-name = "cpi"
-version = "1.1.8"
-description = "Quickly adjust U.S. dollars for inflation using the Consumer Price Index (CPI)"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "cpi-1.1.8-py2.py3-none-any.whl", hash = "sha256:328eb451767c04f294e9051d821c2b3647d6d4c73c1e0c7bc111ea2029d9844d"},
-    {file = "cpi-1.1.8.tar.gz", hash = "sha256:8834246b130f5311b3818ffe02c57dc0d686c803efd19f90092bd43d0907df1f"},
-]
-
-[package.dependencies]
-click = "*"
-pandas = "*"
-python-dateutil = "*"
-requests = "*"
-
-[[package]]
 name = "cryptography"
 version = "50.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -4456,4 +4438,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13.15"
-content-hash = "84b25659d340482e3cb82bd5c9858e651a023eba18ac220b2c233f6b0a6ec0d8"
+content-hash = "32c3f66b2ad69a90430258bbdf555fa42602902863333e0320596b6b09407877"

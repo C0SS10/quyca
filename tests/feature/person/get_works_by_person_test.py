@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from unittest.mock import patch
 
 ENDPOINT = "/person"
@@ -18,21 +18,21 @@ def test_get_works_by_person_with_filters(client):
     assert response.status_code == 200
 
 
-@patch("quyca.domain.services.work.work_service.get_works_by_person")
-def test_get_person_research_products_returns_400_on_error(mock_service, client):
+@patch("quyca.services.work_service.get_works_by_person")
+def test_get_person_research_products_returns_500_on_unexpected_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
 
     response = client.get(f"{ENDPOINT}/123/research/products")
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "boom"}
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Internal server error"}
 
 
-@patch("quyca.domain.services.work.work_service.get_works_filters_by_person")
-def test_get_person_research_products_filters_returns_400_on_error(mock_service, client):
+@patch("quyca.services.work_service.get_works_filters_by_person")
+def test_get_person_research_products_filters_returns_500_on_unexpected_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
 
     response = client.get(f"{ENDPOINT}/123/research/products/filters")
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "boom"}
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Internal server error"}

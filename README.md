@@ -35,10 +35,9 @@ pip install quyca
 
 But this package us deployed with docker, then you need to install docker and docker-compose to run the package.
 
-To deploy you need to edit .env.example file and rename it to:
-.env.local to test the code in your local machine.
-.env.prod to deploy the code in a production environment.
-.env.dev to deploy the code in a development environment.
+To deploy, copy `.env.example` to:
+- `.env.dev` for the development environment (`develop` branch).
+- `.env.prod` for the production environment (`main` branch).
 
 ### Pre-commit
 
@@ -63,68 +62,30 @@ usually database named kahi or kahi_dev, please read
 
 # Usage
 
-edit the .env.example renaming it to .env.dev or .env.prod and set the variables.
-
-```bash
-APP_NAME=quyca
-APP_VERSION=0.0.1
-APP_PORT=8010
-APP_DOMAIN=localhost:8010
-APP_DEBUG=True
-
-API_URL_PREFIX=/api
-
-MONGO_SERVER=localhost
-MONGO_USERNAME=
-MONGO_PASSWORD=
-MONGO_DATABASE=kahi_dev
-MONGO_PORT=27017
-MONGO_CALCULATIONS_DATABASE=kahi_calculations_dev
-
-#ElasticSearch
-ES_SERVER=http://localhost:9200
-ES_USERNAME=
-ES_PASSWORD=
-ES_PERSON_COMPLETER_INDEX=kahi_dev_person
-ES_INSTITUTION_COMPLETER_INDEX=kahi_dev_institution
-ES_GROUP_COMPLETER_INDEX=kahi_dev_group
-ES_DEPARTMENT_COMPLETER_INDEX=kahi_dev_department
-ES_FACULTY_COMPLETER_INDEX=kahi_dev_faculty
-ES_SOURCES_COMPLETER_INDEX=kahi_dev_sources
-
-JWT_SECRET_KEY=123aabbcc
-JWT_ACCESS_TOKEN_EXPIRES=3600
-
-LOCAL_STORAGE_PATH=/app # ruta para guardar el archivo si hay problemas con google drive
-
-GOOGLE_CREDENTIALS=/app # ruta para guardar el .pickle
-
-GOOGLE_PARENT_ID= # ID de la carpetade GoogleDrive
-
-SENTRY_DSN=
-```
+Copy `.env.example` to `.env.dev` or `.env.prod` and set the variables. Every variable is documented there;
+the ones marked *(optional)* have a default. The file is selected by `ENVIRONMENT` (`dev` | `prod`),
+which each Docker target already sets. Real environment variables override the file.
 
 Please read the Makefile to see the available commands to run the package.
 https://github.com/colav/quyca/blob/develop/Makefile
 
-To tests requests to the API, you can use the next urls:
+The API has no route prefix: the web application and the expert API share the same endpoints.
 
-- :8010/app/your/endpoint/here
-- :8010/api/your/endpoint/here
-
-where /app is the endpoint for the web application and /api is the endpoint for the expert API.
-:8010 is the default port for the application but it can be changed in the .env file.
+- Development: https://api.dev.impactu.colav.co/your/endpoint/here
+- Local: http://localhost:8080/your/endpoint/here (`APP_PORT` in the .env file)
 
 # Start the application
 
 ```bash
-make up-dev  # to call "docker-compose up -d" for development
+make up-dev    # build and start the dev container (gunicorn with auto-reload if APP_DEBUG=True)
+make logs-dev  # follow the logs
 ```
 
 or
 
 ```bash
-make up-prod  # to call "docker-compose up -d" for production
+make up-prod   # build and start the prod container
+make logs-prod # follow the logs
 ```
 
 ## Running tests
@@ -178,3 +139,7 @@ http://colav.udea.edu.co/
 ## Business Rules
 
 - Staff validation and normalization: docs/business-rules/staff-validation-normalization.md
+
+## Conventions
+
+- Naming of modules, functions and parameters: docs/conventions/naming.md

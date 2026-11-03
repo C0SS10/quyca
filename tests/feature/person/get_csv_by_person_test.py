@@ -1,6 +1,6 @@
 import io
 
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from unittest.mock import patch
 
 ENDPOINT = "/person"
@@ -13,17 +13,17 @@ def test_get_works_csv_by_person(client):
     assert response.status_code == 200
 
 
-@patch("quyca.domain.services.export.export_service.get_works_csv_by_person")
-def test_get_works_csv_by_person_returns_400_on_error(mock_service, client):
+@patch("quyca.services.export_service.get_works_csv_by_person")
+def test_get_works_csv_by_person_returns_500_on_unexpected_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
 
     response = client.get(f"{ENDPOINT}/123/research/products/csv")
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "boom"}
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Internal server error"}
 
 
-@patch("quyca.domain.services.export.export_service.get_works_excel_by_person")
+@patch("quyca.services.export_service.get_works_excel_by_person")
 def test_get_works_excel_by_person_success(mock_service, client):
     mock_service.return_value = io.BytesIO(b"fake-excel-bytes")
 
@@ -37,17 +37,17 @@ def test_get_works_excel_by_person_success(mock_service, client):
     assert args[0] == "123"
 
 
-@patch("quyca.domain.services.export.export_service.get_works_excel_by_person")
-def test_get_works_excel_by_person_returns_400_on_error(mock_service, client):
+@patch("quyca.services.export_service.get_works_excel_by_person")
+def test_get_works_excel_by_person_returns_500_on_unexpected_error(mock_service, client):
     mock_service.side_effect = Exception("boom")
 
     response = client.get(f"{ENDPOINT}/123/research/products/excel")
 
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "boom"}
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Internal server error"}
 
 
-@patch("quyca.domain.services.export.export_service.get_works_excel_by_person")
+@patch("quyca.services.export_service.get_works_excel_by_person")
 def test_get_works_excel_by_person_invalid_query_params_returns_400(mock_service, client):
     response = client.get(f"{ENDPOINT}/123/research/products/excel?max=invalid")
 

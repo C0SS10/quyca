@@ -1,6 +1,6 @@
 import pytest
 
-from quyca.domain.parsers.source.source_parser import (
+from quyca.parsers.source_parser import (
     parse_available_filters,
     parse_source_type_filter,
     parse_scimago_quartile_filter,

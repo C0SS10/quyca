@@ -2,8 +2,8 @@ from typing import Any
 
 from pydantic import ValidationError
 import pytest
-from quyca.domain.models.geo_model import Geo
-from quyca.domain.parsers.search import search_parser
+from quyca.models.geo_model import Geo
+from quyca.parsers import search_parser
 
 ENDPOINT = "/search/geo"
 

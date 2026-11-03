@@ -1,4 +1,4 @@
-from quyca.domain.models.staff_model import Staff
+from quyca.models.staff_model import Staff
 
 
 def test_staff_creation_with_all_fields() -> None:
