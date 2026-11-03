@@ -56,3 +56,22 @@ class ThemeTopic(BaseModel):
     method: ThemeTopicMethod
     justification: str | None = None
     classified_at: datetime | None = None
+
+
+class ThemeTopicDetail(ThemeTopic):
+    """A classified topic as `GET /app/theme/<theme_id>` returns it: the
+    classification plus the catalog fields of the topic, flat and named like
+    `CurationTopic` (D-009). The topic fields are None when the `topic_id` is
+    not in the catalog (LEFT JOIN). `similarity_score` stays the one of the
+    classification."""
+
+    name: str | None = None
+    summary: str | None = None
+    keywords: str | None = None
+    subfield_id: str | None = None
+    subfield_name: str | None = None
+    field_id: str | None = None
+    field_name: str | None = None
+    domain_id: str | None = None
+    domain_name: str | None = None
+    wikipedia_url: str | None = None

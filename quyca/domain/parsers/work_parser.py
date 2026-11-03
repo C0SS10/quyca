@@ -1,7 +1,7 @@
 import csv
 from io import BytesIO, StringIO
 from openpyxl import Workbook
-from typing import Any, Generator
+from typing import Generator
 
 from quyca.domain.constants import countries_iso
 from quyca.domain.constants.open_access_status import open_access_status_dict

@@ -20,6 +20,7 @@ from quyca.application.routes.api.person_api_router import person_api_router
 from quyca.application.routes.app.source_app_router import source_app_router
 from quyca.application.routes.api.source_api_router import source_api_router
 from quyca.application.routes.app.work_app_router import work_app_router
+from quyca.application.routes.app.theme_app_router import theme_app_router
 from quyca.application.routes.docs_router import router as docs_router
 from quyca.application.routes.ping_router import ping_router
 
@@ -38,6 +39,7 @@ for limit in settings.API_LIMITS.split(","):
     limiter.limit(limit)(apc_api_router)
     limiter.limit(limit)(ping_router)
     limiter.limit(limit)(docs_router)
+    limiter.limit(limit)(theme_app_router)
 
 router = Blueprint("router", __name__)
 
@@ -79,3 +81,5 @@ router.register_blueprint(staff_app_router, url_prefix=f"{settings.APP_URL_PREFI
 router.register_blueprint(ciarp_app_router, url_prefix=f"{settings.APP_URL_PREFIX}/submit")
 
 router.register_blueprint(scienti_app_router, url_prefix=f"{settings.APP_URL_PREFIX}/submit")
+
+router.register_blueprint(theme_app_router, url_prefix=f"{settings.APP_URL_PREFIX}/theme")

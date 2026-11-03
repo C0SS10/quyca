@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     MONGO_IMPACTU_DATABASE: str
     MONGO_URI: Optional[MongoDsn] = None
 
+    CLICKHOUSE_SERVER: str
+    CLICKHOUSE_PORT: int
+    CLICKHOUSE_USER: str
+    CLICKHOUSE_PASSWORD: str
+    CLICKHOUSE_DB: str
+
+    OLLAMA_URL: str
+    OLLAMA_MODEL: str
+
     ES_SERVER: str
     ES_USERNAME: str
     ES_PASSWORD: str
