@@ -1,5 +1,5 @@
 import io
-from typing import Tuple, Union
+from typing import Any
 import pandas as pd
 from xlsxwriter.utility import xl_col_to_name
 
@@ -8,11 +8,11 @@ def to_excel_bytes(df: pd.DataFrame) -> io.BytesIO:
     """Writes the dataframe to an in-memory XLSX file."""
     output = io.BytesIO()
 
-    def sort_identification(value: int) -> Tuple[int, Union[int, str]]:
+    def sort_identification(value: Any) -> tuple[int, int | str]:
         """Sort key that prioritizes numeric identification values."""
         try:
             return (0, int(value))
-        except:
+        except (TypeError, ValueError, OverflowError):
             return (1, str(value))
 
     with pd.ExcelWriter(output, engine="xlsxwriter") as write:
