@@ -19,6 +19,7 @@ from conftest import USER_EMAIL, USER_PASSWORD, Outbox, SeedUser, csrf_headers, 
 from project_files import make_xlsx
 from quyca.repositories import file_repository
 from quyca.services import ciarp_service, scienti_service
+from quyca.validators import staff_validator
 from quyca.validators.ciarp_validator import REQUIRED_COLUMNS
 
 pytestmark = pytest.mark.usefixtures("outbox")
@@ -271,6 +272,36 @@ class TestScienti:
         assert scienti_service.handle_scienti_upload(file, claims, "01/01/2026")[1] == 401
 
     def test_requires_a_file(self) -> None:
-        claims = {"sub": USER_EMAIL, "_id": ROR_ID, "institution": INSTITUTION}
+        claims = {"sub": USER_EMAIL, "_id": ROR_ID, "institution": INSTITUTION, "role": "staff"}
 
         assert scienti_service.handle_scienti_upload(None, claims, "01/01/2026")[1] == 400
+
+
+class TestEmptyFiles:
+    """Ninguna carga acepta un archivo sin datos: no se guarda ni se envía correo."""
+
+    def _assert_rejected(self, response: TestResponse, outbox: Outbox, storage: Path, file_type: str) -> None:
+        assert response.status_code == 400
+        assert "vacío" in response.get_json()["msg"]
+        assert outbox.messages == []
+        assert _saved(storage, file_type) == []
+
+    @pytest.mark.parametrize(
+        "rows", [pytest.param([], id="solo-encabezados"), pytest.param([{}, {}], id="filas-en-blanco")]
+    )
+    def test_ciarp(self, uploader: FlaskClient, outbox: Outbox, storage: Path, rows: list) -> None:
+        response = _upload(uploader, TestCiarp.PATH, _ciarp_xlsx(rows), "ciarp.xlsx")
+
+        self._assert_rejected(response, outbox, storage, "ciarp")
+
+    def test_staff(self, uploader: FlaskClient, outbox: Outbox, storage: Path) -> None:
+        xlsx = make_xlsx([], headers=staff_validator.REQUIRED_COLUMNS)
+
+        response = _upload(uploader, "/submit/staff", xlsx, "staff.xlsx")
+
+        self._assert_rejected(response, outbox, storage, "staff")
+
+    def test_scienti(self, uploader: FlaskClient, outbox: Outbox, storage: Path) -> None:
+        response = _upload(uploader, TestScienti.PATH, b"", "dump.zip")
+
+        self._assert_rejected(response, outbox, storage, "scienti")

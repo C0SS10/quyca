@@ -77,3 +77,12 @@ def test_flagged_rows_are_colored_by_state_with_errors_first() -> None:
 
 def test_without_a_state_column_nothing_is_colored() -> None:
     assert _rules(_sheet(pd.DataFrame({"título": ["a"]}))) == []
+
+
+def test_identifications_that_are_not_numbers_do_not_break_the_sort() -> None:
+    df = pd.DataFrame({"identificación": [float("inf"), None, "x", 5], "título": ["a", "b", "c", "d"]})
+
+    rows = _values(_sheet(df))[1:]
+
+    assert len(rows) == 4
+    assert rows[0] == (5, "d")

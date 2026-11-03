@@ -100,3 +100,12 @@ class TestBadUploads:
 
         assert response.status_code == 400
         assert response.get_json()["msg"] == "Archivo requerido"
+
+
+def test_a_file_without_projects_is_not_valid(as_user: FlaskClient) -> None:
+    response = _upload(as_user, make_xlsx([], headers=list(VALID_PROJECT)))
+
+    assert response.status_code == 200
+    report = response.get_json()["data"]
+    assert (report["valid"], report["total_rows"]) == (False, 0)
+    assert [issue["code"] for issue in report["issues"]] == ["empty_file"]

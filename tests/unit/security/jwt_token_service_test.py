@@ -82,7 +82,7 @@ def test_upload_claims_are_returned_in_order() -> None:
 
 
 @pytest.mark.parametrize("key", sorted(VALID_UPLOAD_CLAIMS))
-@pytest.mark.parametrize("bad_value", [None, "", 123], ids=["none", "vacio", "no-string"])
+@pytest.mark.parametrize("bad_value", [None, "", "   ", 123], ids=["none", "vacio", "en-blanco", "no-string"])
 def test_upload_claims_reject_any_missing_or_invalid_field(key: str, bad_value: object) -> None:
     assert jwt_token_service.get_upload_claims({**VALID_UPLOAD_CLAIMS, key: bad_value}) is None
 
