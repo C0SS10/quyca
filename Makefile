@@ -13,8 +13,6 @@ tests-unit-dev:
 	docker compose exec dev pytest tests/unit
 tests-feature-dev:
 	docker compose exec dev pytest tests/feature
-coverage-dev:
-	docker compose exec -e COVERAGE_FILE=/tmp/.coverage dev sh -c "pytest tests/unit --cov --cov-report= && pytest tests/feature --cov --cov-append --cov-report=term"
 refresh-filters-dev:
 	docker compose exec dev python -m quyca.jobs.refresh_filters
 
