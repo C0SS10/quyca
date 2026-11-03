@@ -181,8 +181,6 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
     # Keep the sheet's row labels: findings must point to the row the user sees, even after blank rows.
     df = df.dropna(how="all")
     df = df[~df.apply(lambda row: row.astype(str).str.strip().eq("").all(), axis=1)]
-    df = df.apply(lambda x: str(x).strip() if isinstance(x, str) else x)
-    df = df.apply(lambda x: str(int(x)) if isinstance(x, float) and x.is_integer() else x)
 
     for idx, row in df.iterrows():
         r = validate_row(row.to_dict(), idx)

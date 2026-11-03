@@ -60,8 +60,8 @@ def validate_rows(content: ProjectFileContent) -> tuple[list[ValidationIssue], l
     issues: list[ValidationIssue] = []
     normalized_rows: list[NormalizedRow] = []
     for row in content.rows:
-        normalized, rowmake_issues = validate_row(row, content.columns)
-        issues.extend(rowmake_issues)
+        normalized, row_issues = validate_row(row, content.columns)
+        issues.extend(row_issues)
         normalized_rows.append((row.row_number, normalized))
     return issues, normalized_rows
 
@@ -72,9 +72,9 @@ def validate_row(row: ProjectFileRow, columns: list[str]) -> tuple[dict[str, Any
     for spec in PROJECT_FILE_COLUMNS:
         if spec.name not in columns:
             continue
-        value, columnmake_issues = _validate_column(row.row_number, spec, row.values.get(spec.name))
+        value, column_issues = _validate_column(row.row_number, spec, row.values.get(spec.name))
         normalized[spec.name] = value
-        issues.extend(columnmake_issues)
+        issues.extend(column_issues)
     issues.extend(_validate_cross_fields(row.row_number, normalized))
     return normalized, issues
 

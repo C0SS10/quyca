@@ -32,7 +32,7 @@ def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[
                     "fila": index,
                     "columna": "tipo_documento",
                     "detalle": f"El tipo de documento '{tipo_documento}' no es válido",
-                    "value": tipo_documento,
+                    "valor": tipo_documento,
                 }
             )
 
