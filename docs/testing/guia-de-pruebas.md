@@ -135,6 +135,7 @@ La cobertura dice qué se ejecutó, no qué se verificó. Para medir la calidad 
 
 ## Reglas de negocio que protegen las pruebas de cargas
 
+- **Ninguna carga acepta un archivo vacío** (proyectos, CIARP, Scienti y staff): no se guarda ni se envía correo.
 - **Las marcas del Excel de validación caen en la fila correcta**, aunque el archivo tenga filas en blanco en medio (CIARP y staff).
 - **Los colores del Excel de validación no cambian los datos.** Se aplican con formato condicional, así que las fechas siguen siendo fechas y los colores acompañan a la fila si el usuario la ordena.
 - **Scienti confirma la recepción solo después de guardar el archivo.** Si el guardado falla, no se envía el correo de "recibido".
