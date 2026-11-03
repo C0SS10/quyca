@@ -18,6 +18,8 @@ def generate_quality_report(
     has_nombre_completo: bool = False,
 ) -> io.BytesIO:
     """Generates the Staff PDF report with errors/warnings/duplicates."""
+    # Every value below comes from the upload or the session: it is shown as text, never parsed as HTML.
+    institution, filename, user = (html_lib.escape(str(value)) for value in (institution, filename, user))
     report_date = datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y %H:%M")
 
     name_rows = ""
@@ -200,8 +202,8 @@ def generate_quality_report(
             """
 
         for err in errors:
-            columna_e = err.get("columna", "")
-            detalle_e = err.get("detalle", "")
+            columna_e = html_lib.escape(str(err.get("columna", "")))
+            detalle_e = html_lib.escape(str(err.get("detalle", "")))
             total_e = err.get("total_filas", 0)
             html += f"""
                     <tr>
@@ -225,9 +227,9 @@ def generate_quality_report(
             """
 
         for warn in warnings:
-            columna_w = warn.get("columna", "")
-            detalle_w = warn.get("detalle", "")
-            valor_w = warn.get("valor", "")
+            columna_w = html_lib.escape(str(warn.get("columna", "")))
+            detalle_w = html_lib.escape(str(warn.get("detalle", "")))
+            valor_w = html_lib.escape(str(warn.get("valor", "")))
             total_w = warn.get("total_filas", 0)
             html += f"""
                     <tr>
@@ -261,7 +263,7 @@ def generate_quality_report(
                 "....": "....",
                 "unidad_académica": row.get("unidad_académica"),
             }
-            html += f"<li>{preview}</li>"
+            html += f"<li>{html_lib.escape(str(preview))}</li>"
         html += "</ul>"
 
     if normalized_changes:
@@ -384,6 +386,7 @@ def generate_quality_report_ciarp(
     user: str,
 ) -> io.BytesIO:
     """Generates the CIARP PDF report (with warnings summary)."""
+    institution, filename, user = (html_lib.escape(str(value)) for value in (institution, filename, user))
     report_date = datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y %H:%M")
 
     if errors:
@@ -549,8 +552,8 @@ def generate_quality_report_ciarp(
             """
 
         for err in errors:
-            columna_e = err.get("columna", "")
-            detalle_e = err.get("detalle", "")
+            columna_e = html_lib.escape(str(err.get("columna", "")))
+            detalle_e = html_lib.escape(str(err.get("detalle", "")))
             total_e = err.get("total_filas", 0)
             html += f"""
                     <tr>
@@ -582,7 +585,7 @@ def generate_quality_report_ciarp(
                 "....": "....",
                 "unidad_académica": row.get("unidad_académica"),
             }
-            html += f"<li>{preview}</li>"
+            html += f"<li>{html_lib.escape(str(preview))}</li>"
         html += "</ul>"
 
     html += """

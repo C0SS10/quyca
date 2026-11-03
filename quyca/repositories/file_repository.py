@@ -13,6 +13,11 @@ from quyca.clients import google_drive
 from quyca.files import excel_cleaner
 
 
+def _path_safe(value: str) -> str:
+    """Token data becomes file and folder names: spaces turn into '-' and a '/' would be read as a folder."""
+    return value.strip().replace(" ", "-").replace("/", "_")
+
+
 def save_file(
     file: FileStorage,
     ror_id: str,
@@ -24,7 +29,8 @@ def save_file(
     timestamp = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d_%H:%M")
     filename = file.filename or ""
     original_ext = os.path.splitext(filename)[1].lower()
-    filename = f"{filename_prefix}{file_type}_{ror_id}_{timestamp}{original_ext}"
+    safe_ror_id, safe_institution = _path_safe(ror_id), _path_safe(institution)
+    filename = f"{filename_prefix}{file_type}_{safe_ror_id}_{timestamp}{original_ext}"
 
     temp_path = os.path.join("/tmp", filename)
     file.save(temp_path)
@@ -38,8 +44,7 @@ def save_file(
     try:
         drive = google_drive.get_service()
         root_folder = google_drive.get_or_create_folder(drive, file_type)
-        safe_institution = institution.strip().replace(" ", "-")
-        user_folder_name = f"{ror_id}_{safe_institution}"
+        user_folder_name = f"{safe_ror_id}_{safe_institution}"
         user_folder = google_drive.get_or_create_folder(drive, user_folder_name, parent_id=root_folder)
 
         google_drive.upload_file(drive, temp_path, filename, user_folder)
@@ -56,8 +61,7 @@ def save_file(
             type_folder = os.path.join(local_base, file_type)
             os.makedirs(type_folder, exist_ok=True)
 
-            safe_institution = institution.strip().replace(" ", "-")
-            user_folder = os.path.join(type_folder, f"{ror_id}_{safe_institution}")
+            user_folder = os.path.join(type_folder, f"{safe_ror_id}_{safe_institution}")
             os.makedirs(user_folder, exist_ok=True)
 
             local_path = os.path.join(user_folder, filename)

@@ -53,11 +53,13 @@ def get_or_create_folder(service: Any, folder_name: str, parent_id: Optional[str
     """Finds or creates a folder and returns its id."""
     if parent_id is None:
         parent_id = current_app.config["GOOGLE_PARENT_ID"]
+    # The query quotes the name: a ' or \ in it (O'Higgins) would otherwise end the string early.
+    quoted_name = folder_name.replace("\\", "\\\\").replace("'", "\\'")
     if parent_id:
         parent_id = resolve_folder_id(service, parent_id)
-        query = f"name = '{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
+        query = f"name = '{quoted_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
     else:
-        query = f"name = '{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        query = f"name = '{quoted_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
 
     results: dict[str, Any] = (
         service.files()
