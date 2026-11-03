@@ -43,13 +43,15 @@ mongomock = "^4.3.0"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
-mypy_path = "."
+mypy_path = ".:tests"
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
 minversion = "9.0"
-# `pytest` a secas corre solo las pruebas unitarias, que no tocan nada real.
-testpaths = ["tests/unit"]
+# `pytest` a secas corre unit e integration, que no tocan nada real; tests/api se corre aparte.
+testpaths = ["tests/unit", "tests/integration"]
+# Hace importables los ayudantes compartidos: `from support.isolated import ...`.
+pythonpath = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
 required_plugins = ["pytest-cov>=7.1"]
 xfail_strict = true

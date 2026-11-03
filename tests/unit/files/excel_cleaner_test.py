@@ -1,9 +1,7 @@
 from pathlib import Path
-
 import pytest
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
-
 from quyca.files import excel_cleaner
 
 

@@ -1,9 +1,7 @@
 import io
 from typing import Any
-
 import pytest
-
-from project_files import VALID_PROJECT, make_xlsx
+from support.project_files import VALID_PROJECT, make_xlsx
 from quyca.constants.project_file_schema import SCHEMA_VERSION
 from quyca.services import submit_project_file_service
 

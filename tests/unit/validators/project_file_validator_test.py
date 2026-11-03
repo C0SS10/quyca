@@ -1,8 +1,6 @@
 from datetime import date, datetime
 from typing import Any
-
 import pytest
-
 from quyca.constants.project_file_schema import PROJECT_FILE_COLUMNS
 from quyca.models.project_file_model import ProjectFileContent, ProjectFileRow
 from quyca.validators import project_file_validator as validator

@@ -1,8 +1,6 @@
 from typing import Any, Callable
-
 import pytest
-
-from conftest import USER_EMAIL, USER_PASSWORD, SeedUser
+from support.isolated import USER_EMAIL, USER_PASSWORD, SeedUser
 from quyca.exceptions import ConflictException, NotEntityException
 from quyca.models.user_model import User
 from quyca.repositories import user_repository

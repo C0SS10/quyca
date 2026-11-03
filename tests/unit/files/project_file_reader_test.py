@@ -5,10 +5,8 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 import pytest
-
-from project_files import VALID_PROJECT, make_excel_style_xlsx, make_xlsx, rewrite_member, with_doctype
+from support.project_files import VALID_PROJECT, make_excel_style_xlsx, make_xlsx, rewrite_member, with_doctype
 from quyca.exceptions import ProjectFileException
 from quyca.files import project_file_reader
 from quyca.files.project_file_reader import clean_value, read_project_file

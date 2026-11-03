@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from conftest import NOW, ONE_DAY, USER_EMAIL, USER_PASSWORD, Outbox, SeedUser
+from support.isolated import NOW, ONE_DAY, USER_EMAIL, USER_PASSWORD, Outbox, SeedUser
 from quyca.exceptions import (
     ConflictException,
     EmailDeliveryException,

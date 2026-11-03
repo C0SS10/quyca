@@ -1,11 +1,9 @@
 from datetime import timedelta
 from typing import Any
-
 import flask_jwt_extended
 import jwt
 import pytest
 from flask import Flask
-
 from quyca.security import jwt_token_service
 
 CLAIMS = {"_id": "ror-1", "institution": "UdeA", "role": "staff"}

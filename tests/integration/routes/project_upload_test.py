@@ -7,8 +7,8 @@ import pytest
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
-from conftest import USER_EMAIL, csrf_headers
-from project_files import VALID_PROJECT, make_xlsx
+from support.isolated import USER_EMAIL, csrf_headers
+from support.project_files import VALID_PROJECT, make_xlsx
 from quyca.api import submit_router
 
 PATH = "/submit/project"

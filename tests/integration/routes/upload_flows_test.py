@@ -15,8 +15,8 @@ from flask.testing import FlaskClient
 from werkzeug.datastructures import FileStorage
 from werkzeug.test import TestResponse
 
-from conftest import USER_EMAIL, USER_PASSWORD, Outbox, SeedUser, csrf_headers, sign_in
-from project_files import make_xlsx
+from support.isolated import USER_EMAIL, USER_PASSWORD, Outbox, SeedUser, csrf_headers, sign_in
+from support.project_files import make_xlsx
 from quyca.repositories import file_repository
 from quyca.services import ciarp_service, scienti_service
 from quyca.validators import staff_validator

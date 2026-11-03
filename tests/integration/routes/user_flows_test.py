@@ -12,7 +12,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
-from conftest import (
+from support.isolated import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     USER_EMAIL,

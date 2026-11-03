@@ -1,5 +1,4 @@
 import pandas as pd
-
 from quyca.files.annotator import annotate
 from quyca.models.staff_report_model import StaffReport
 

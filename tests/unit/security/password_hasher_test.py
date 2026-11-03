@@ -1,6 +1,5 @@
 import bcrypt
 import pytest
-
 from quyca.security.password_hasher import hash_password, verify_password
 
 

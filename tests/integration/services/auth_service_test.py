@@ -1,10 +1,8 @@
 from typing import Any
-
 import flask_jwt_extended
 import pytest
 from flask import Flask
-
-from conftest import USER_EMAIL, USER_PASSWORD, SeedUser
+from support.isolated import USER_EMAIL, USER_PASSWORD, SeedUser
 from quyca.exceptions import ForbiddenException, InvalidParamException, UnauthorizedException
 from quyca.security import jwt_token_service
 from quyca.services import auth_service
