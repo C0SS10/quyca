@@ -97,6 +97,16 @@ class TestSession:
         assert response.get_json()["status"] == "sesion_activa"
         assert response.get_json()["user"]["email"] == USER_EMAIL
 
+    @pytest.mark.parametrize("cookie", [None, "token-invalido"], ids=["sin-cookie", "token-invalido"])
+    def test_logout_works_without_a_valid_session(self, client: FlaskClient, cookie: str | None) -> None:
+        if cookie:
+            client.set_cookie("access_token_cookie", cookie)
+
+        response = client.post("/logout")
+
+        assert response.status_code == 200
+        assert response.get_json()["success"] is True
+
     def test_logout_ends_the_session(self, as_user: FlaskClient) -> None:
         assert as_user.post("/logout").status_code == 200
 
@@ -148,7 +158,10 @@ API_KEY_ROUTES = [(method, f"/users/{USER_EMAIL}/apikey") for method in ("post",
 class TestPermissions:
     @pytest.mark.parametrize("method, path", ADMIN_ROUTES + API_KEY_ROUTES)
     def test_every_route_requires_a_session(self, client: FlaskClient, users: Any, method: str, path: str) -> None:
-        assert getattr(client, method)(path, json={}).status_code == 401
+        response = getattr(client, method)(path, json={})
+
+        assert response.status_code == 401
+        assert "Token" in response.get_json()["msg"]
         assert users.count_documents({}) == 0
 
     @pytest.mark.parametrize("method, path", ADMIN_ROUTES)
@@ -158,6 +171,7 @@ class TestPermissions:
         response = getattr(as_user, method)(path, json=NEW_USER, headers=csrf_headers(as_user))
 
         assert response.status_code == 403
+        assert "Permiso denegado" in response.get_json()["msg"]
         assert list(users.find()) == before
 
     @pytest.mark.parametrize("method, path", [route for route in ADMIN_ROUTES if route[0] != "get"] + API_KEY_ROUTES)
@@ -183,6 +197,7 @@ class TestPermissions:
         )
 
         assert response.status_code == 403
+        assert response.get_json()["success"] is False
         assert users.find_one({"email": USER_EMAIL})["apikey"] == key
 
     def test_a_token_with_a_blank_identity_is_rejected(self, client: FlaskClient, app: Flask) -> None:

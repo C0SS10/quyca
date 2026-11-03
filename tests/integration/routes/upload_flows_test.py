@@ -181,9 +181,6 @@ class TestCiarp:
         assert outbox.messages == []
         assert _saved(storage, "ciarp") == []
 
-    def test_requires_a_session(self, client: FlaskClient, users: Any) -> None:
-        assert _upload(client, self.PATH, _ciarp_xlsx([VALID_CIARP]), "ciarp.xlsx").status_code == 401
-
     def test_a_token_without_upload_claims(self) -> None:
         file = FileStorage(io.BytesIO(b"x"), filename="ciarp.xlsx")
 
@@ -305,3 +302,24 @@ class TestEmptyFiles:
         response = _upload(uploader, TestScienti.PATH, b"", "dump.zip")
 
         self._assert_rejected(response, outbox, storage, "scienti")
+
+
+UPLOAD_PATHS = ["/submit/staff", "/submit/ciarp", "/submit/scienti"]
+
+
+@pytest.mark.parametrize("path", UPLOAD_PATHS)
+def test_uploads_require_a_session(client: FlaskClient, users: Any, outbox: Outbox, path: str) -> None:
+    response = _upload(client, path, b"x", "archivo.xlsx")
+
+    assert response.status_code == 401
+    assert response.get_json() == {"success": False, "msg": "Token inválido o expirado"}
+    assert outbox.messages == []
+
+
+@pytest.mark.parametrize("path", UPLOAD_PATHS)
+def test_uploads_require_the_file_field(uploader: FlaskClient, outbox: Outbox, path: str) -> None:
+    response = uploader.post(path, data={}, content_type="multipart/form-data", headers=csrf_headers(uploader))
+
+    assert response.status_code == 400
+    assert response.get_json() == {"success": False, "msg": "Archivo requerido"}
+    assert outbox.messages == []
