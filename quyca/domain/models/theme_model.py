@@ -25,6 +25,9 @@ class CurationTopic(BaseModel):
     domain_name: str | None = None
     wikipedia_url: str | None = None
     similarity_score: float | None = None
+    # Position in the list the response returns (1 = first) and position in the cosine list of phase 1 (D-097).
+    rank: int | None = None
+    cosine_rank: int | None = None
 
 
 class Theme(BaseModel):

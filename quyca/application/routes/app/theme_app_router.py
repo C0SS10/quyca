@@ -6,11 +6,13 @@ from flask import Blueprint, Response, jsonify, request
 from sentry_sdk import capture_exception
 
 from quyca.domain.exceptions.not_entity_exception import NotEntityException
+from quyca.domain.exceptions.reranker_unavailable_exception import RerankerUnavailableException
 from quyca.domain.services import theme_service
 
 theme_app_router = Blueprint("theme_app_router", __name__)
 
 TOP_N_MAX = 4516  # size of the topic catalog (D-004)
+RERANK_TOP_N = theme_service.RERANK_MAX_TOPICS  # default size of the list: 120 (D-097)
 SEARCH_LIMIT_MAX = 100  # D-008
 
 
@@ -53,12 +55,13 @@ def _int_in_range(value: object, name: str, minimum: int, maximum: int) -> int:
 @api {post} /app/theme/candidates Get topic candidates for a seed
 @apiName GetCandidates
 @apiGroup Theme
-@apiVersion 1.0.0
-@apiDescription FR3-FR5. Calcula el embedding de la semilla (con la
-instrucción de consulta de Qwen3-Embedding) y devuelve el top N de tópicos más similares por coseno.
+@apiVersion 1.1.0
+@apiDescription FR3-FR5, fase 1 de 2 (D-097). Calcula el embedding de la semilla (con la
+instrucción de consulta de Qwen3-Embedding) y devuelve el top N de tópicos más similares por coseno, con
+`rank` = `cosine_rank` y `reranking_available`.
 
 @apiParam {String} seed_text Semilla en lenguaje natural (≤4096 tokens).
-@apiParam {Number} [top_n=300] Cantidad de candidatos a devolver.
+@apiParam {Number} [top_n=120] Cantidad de candidatos a devolver (la interfaz ya no lo envía).
 """
 
 
@@ -69,10 +72,55 @@ def get_candidates() -> Response | Tuple[Response, int]:
         seed_text = body.get("seed_text")
         if not seed_text:
             raise ValueError("seed_text es obligatorio.")
-        top_n = _int_in_range(body.get("top_n", 300), "top_n", 1, TOP_N_MAX)
+        top_n = _int_in_range(body.get("top_n", RERANK_TOP_N), "top_n", 1, TOP_N_MAX)
         return jsonify(theme_service.get_candidates(seed_text, top_n=top_n))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        capture_exception(e)
+        return jsonify({"error": str(e)}), 400
+
+
+"""
+@api {post} /app/theme/candidates/rerank Reorder the candidates with the reranker
+@apiName RerankCandidates
+@apiGroup Theme
+@apiVersion 1.1.0
+@apiDescription D-097, fase 2 de 2. Recibe la semilla y los topic_id de la fase 1 (en su orden) y devuelve los
+mismos tópicos reordenados por el reranker, todos de una vez, con `rank` (posición nueva), `cosine_rank` (posición
+en la fase 1) y `similarity_score` (coseno). No devuelve el puntaje del reranker. 503 `reranker_unavailable` si el
+servicio no responde o tarda más de 60 s.
+
+@apiParam {String} seed_text La misma semilla de la fase 1.
+@apiParam {String[]} topic_ids De 1 a 120 topic_id distintos, en el orden de la fase 1.
+"""
+
+
+@theme_app_router.route("/candidates/rerank", methods=["POST"])
+def rerank_candidates() -> Response | Tuple[Response, int]:
+    try:
+        body = request.get_json(force=True) or {}
+        seed_text = body.get("seed_text")
+        if not seed_text or not isinstance(seed_text, str):
+            raise ValueError("seed_text es obligatorio.")
+        topic_ids = body.get("topic_ids")
+        if not isinstance(topic_ids, list) or not topic_ids:
+            raise ValueError("topic_ids debe ser un arreglo no vacío.")
+        if len(topic_ids) > theme_service.RERANK_MAX_TOPICS:
+            raise ValueError(f"topic_ids admite como máximo {theme_service.RERANK_MAX_TOPICS} elementos.")
+        if not all(isinstance(t, str) and t for t in topic_ids):
+            raise ValueError("topic_ids debe contener solo cadenas no vacías.")
+        if len(set(topic_ids)) != len(topic_ids):
+            raise ValueError("topic_ids no admite repetidos.")
+        return jsonify(theme_service.rerank_candidates(seed_text, topic_ids))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RerankerUnavailableException as e:
+        capture_exception(e)
+        return (
+            jsonify({"error": "El servicio de reordenamiento no está disponible.", "code": "reranker_unavailable"}),
+            503,
+        )
     except Exception as e:
         capture_exception(e)
         return jsonify({"error": str(e)}), 400

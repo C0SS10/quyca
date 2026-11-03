@@ -1,18 +1,54 @@
+import time
 import uuid
 
 from pydantic import ValidationError
 
-from quyca.domain.models.theme_model import Theme, ThemeTopic
+from quyca.domain.exceptions.reranker_unavailable_exception import RerankerUnavailableException
+from quyca.domain.models.theme_model import Theme, ThemeTopic, ThemeTopicMethod, ThemeTopicStatus
+from quyca.infrastructure import reranker
 from quyca.infrastructure.repositories import theme_repository
 
 
 _UNKNOWN_TOPIC_MESSAGE = "topic_id {topic_id} does not exist in the topic catalog."
 
 
-def get_candidates(seed_text: str, top_n: int = 300) -> dict:
-    """FR3-FR5."""
+RERANK_MAX_TOPICS = 120  # D-097: the list of phase 1 has 120 topics
+
+
+def get_candidates(seed_text: str, top_n: int = RERANK_MAX_TOPICS) -> dict:
+    """FR3-FR5. Phase 1 of 2 (D-097): the list by cosine, plus whether the reranker of phase 2 is reachable."""
     candidates, truncated = theme_repository.get_candidates(seed_text, top_n=top_n)
-    return {"data": [c.model_dump() for c in candidates], "total_results": len(candidates), "truncated": truncated}
+    return {
+        "data": [c.model_dump() for c in candidates],
+        "total_results": len(candidates),
+        "truncated": truncated,
+        "reranking_available": reranker.is_available(),
+    }
+
+
+def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
+    """Phase 2 of 2 (D-097): the topics of phase 1 reordered by the reranker, all at once. `rank` is the new position and
+    `cosine_rank` the position in `topic_ids` (the order of phase 1). The reranker score is not returned (D-090).
+    Raises ValueError (400) on invalid ids and RerankerUnavailableException (503) when the service fails or takes > 60 s.
+    """
+    started_at = time.monotonic()
+    topics = theme_repository.get_topics_with_cosine(seed_text, topic_ids)
+    found = {t.topic_id for t in topics}
+    missing = [t for t in topic_ids if t not in found]
+    if missing:
+        raise ValueError(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=missing[0]))
+    cosine_rank = {t: i for i, t in enumerate(topic_ids, start=1)}
+    documents = [{"topic_id": t.topic_id, "text": f"{t.name}. {t.keywords}. {t.summary}"} for t in topics]
+    order = reranker.rerank(seed_text, documents, started_at)
+    by_id = {t.topic_id: t for t in topics}
+    if sorted(order) != sorted(by_id):
+        raise RerankerUnavailableException("The reranker returned an unexpected list of topics.")
+    result = []
+    for position, topic_id in enumerate(order, start=1):
+        topic = by_id[topic_id]
+        topic.rank, topic.cosine_rank = position, cosine_rank[topic_id]
+        result.append(topic.model_dump())
+    return {"data": result, "total_results": len(result)}
 
 
 def search_topics(query_text: str, limit: int = 50) -> dict:
@@ -68,8 +104,8 @@ def list_themes() -> dict:
 def classify_topic(
     theme_id: str,
     topic_id: str,
-    status: str,
-    method: str,
+    status: ThemeTopicStatus,
+    method: ThemeTopicMethod,
     similarity_score: float | None = None,
     justification: str | None = None,
 ) -> dict:

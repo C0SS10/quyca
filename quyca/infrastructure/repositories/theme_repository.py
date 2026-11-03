@@ -37,7 +37,7 @@ def _row_to_topic(row: tuple, similarity_score: float | None = None) -> Curation
     )
 
 
-def get_candidates(seed_text: str, top_n: int = 300) -> tuple[list[CurationTopic], bool]:
+def get_candidates(seed_text: str, top_n: int = 120) -> tuple[list[CurationTopic], bool]:
     """FR3-FR5: embed la semilla (instrucción de consulta de Qwen) y devuelve los
     top_n tópicos más similares por coseno. Es poc_candidates.py, ya
     integrado a quyca -- misma lógica, mismo cálculo. Also returns whether
@@ -51,7 +51,26 @@ def get_candidates(seed_text: str, top_n: int = 300) -> tuple[list[CurationTopic
         LIMIT {{top_n:UInt32}}
     """
     result = client.query(query, parameters={"seed_embedding": seed_embedding, "top_n": top_n})
-    return [_row_to_topic(row[:-1], similarity_score=row[-1]) for row in result.result_rows], truncated
+    topics = [_row_to_topic(row[:-1], similarity_score=row[-1]) for row in result.result_rows]
+    for position, topic in enumerate(topics, start=1):
+        topic.rank = topic.cosine_rank = position
+    return topics, truncated
+
+
+def get_topics_with_cosine(seed_text: str, topic_ids: list[str]) -> list[CurationTopic]:
+    """Phase 2 of the candidate list (D-097): the requested topics with their cosine to the seed, in the order of `topic_ids`.
+    Uses the cached seed embedding, so the scores equal those of phase 1 while the seed is cached. Ids missing from the
+    catalog are simply absent from the result (the caller checks)."""
+    seed_embedding, _ = ollama.get_embedding(seed_text)
+    query = f"""
+        SELECT {', '.join(_TOPIC_COLUMNS)},
+               1 - cosineDistance(embedding, {{seed_embedding:Array(Float32)}}) AS similarity
+        FROM topics
+        WHERE topic_id IN {{topic_ids:Array(String)}}
+    """
+    result = client.query(query, parameters={"seed_embedding": seed_embedding, "topic_ids": topic_ids})
+    by_id = {str(row[0]): _row_to_topic(row[:-1], similarity_score=row[-1]) for row in result.result_rows}
+    return [by_id[t] for t in topic_ids if t in by_id]
 
 
 def search_topics(query_text: str, limit: int = 50) -> list[CurationTopic]:

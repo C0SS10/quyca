@@ -48,6 +48,13 @@ class Settings(BaseSettings):
 
     OLLAMA_URL: str
     OLLAMA_MODEL: str
+    # Layers of the embedding model on the GPU, sent in every Ollama call. Empty = let Ollama decide.
+    # On the 4 GB laptop the reranker is resident on the GPU, so a reduced value keeps both models working (B72).
+    OLLAMA_NUM_GPU: Optional[int] = None
+
+    # Reranker service (Qwen3-Reranker-4B, separate process next to Ollama, D-097). Empty URL = phase 2 disabled.
+    RERANKER_URL: str = ""
+    RERANKER_TIMEOUT_S: int = 60
 
     ES_SERVER: str
     ES_USERNAME: str
