@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 from flask.testing import FlaskClient
 from typing import Any, cast
 
-ROUTER_MOD = "quyca.application.routes.app.user_crud_app_router"
+ROUTER_MOD = "quyca.api.user_crud_router"
 
 
 def auth_cookie(client: FlaskClient, role: str = "admin") -> None:
@@ -17,14 +17,14 @@ def auth_cookie(client: FlaskClient, role: str = "admin") -> None:
 
 
 def test_edit_user_no_token(client: FlaskClient) -> None:
-    resp = client.put("/app/admin/users/x@x.com", json={"role": "staff"})
+    resp = client.put("/admin/users/x@x.com", json={"role": "staff"})
     assert resp.status_code == 401
 
 
 def test_edit_user_non_admin(client: FlaskClient) -> None:
     auth_cookie(client, role="staff")
 
-    resp = client.put("/app/admin/users/x@x.com", json={"role": "staff"})
+    resp = client.put("/admin/users/x@x.com", json={"role": "staff"})
 
     assert resp.status_code == 403
     json_data = cast(dict[str, Any], resp.get_json())
@@ -37,8 +37,8 @@ def test_edit_user_success(client: FlaskClient) -> None:
     usecase_mock = Mock()
     usecase_mock.update_user_info.return_value = {"success": True, "msg": "Actualizado"}
 
-    with patch(f"{ROUTER_MOD}.usecase", usecase_mock):
-        resp = client.put("/app/admin/users/x@x.com", json={"role": "staff"})
+    with patch(f"{ROUTER_MOD}.user_service", usecase_mock):
+        resp = client.put("/admin/users/x@x.com", json={"role": "staff"})
 
     assert resp.status_code == 200
     json_data = cast(dict[str, Any], resp.get_json())

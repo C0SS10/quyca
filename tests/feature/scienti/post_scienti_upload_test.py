@@ -21,7 +21,7 @@ def test_scienti_upload_invalid_token(client: FlaskClient) -> None:
     client.set_cookie("access_token_cookie", "invalid_token")
 
     response = client.post(
-        "/app/submit/scienti",
+        "/submit/scienti",
         data={"file": (io.BytesIO(b"zip-content"), "scienti.zip")},
         content_type="multipart/form-data",
     )
@@ -34,7 +34,7 @@ def test_scienti_upload_invalid_token(client: FlaskClient) -> None:
 def test_scienti_upload_no_file(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    response = client.post("/app/submit/scienti", data={})
+    response = client.post("/submit/scienti", data={})
 
     assert response.status_code == 400
     json_data = cast(dict[str, Any], response.json)
@@ -44,7 +44,7 @@ def test_scienti_upload_no_file(client: FlaskClient) -> None:
 def test_scienti_upload_with_invalid_extension(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {
                 "success": False,
@@ -54,7 +54,7 @@ def test_scienti_upload_with_invalid_extension(client: FlaskClient) -> None:
         )
 
         response = client.post(
-            "/app/submit/scienti",
+            "/submit/scienti",
             data={"file": (io.BytesIO(b"content"), "scienti.xlsx")},
             content_type="multipart/form-data",
         )
@@ -68,7 +68,7 @@ def test_scienti_upload_with_invalid_extension(client: FlaskClient) -> None:
 def test_scienti_upload_success(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {
                 "success": True,
@@ -80,7 +80,7 @@ def test_scienti_upload_success(client: FlaskClient) -> None:
         )
 
         response = client.post(
-            "/app/submit/scienti",
+            "/submit/scienti",
             data={"file": (io.BytesIO(b"zip-content"), "scienti.zip")},
             content_type="multipart/form-data",
         )
@@ -93,14 +93,14 @@ def test_scienti_upload_success(client: FlaskClient) -> None:
 def test_scienti_upload_save_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "msg": "Archivo recibido pero falló el guardado"},
             500,
         )
 
         response = client.post(
-            "/app/submit/scienti",
+            "/submit/scienti",
             data={"file": (io.BytesIO(b"zip-content"), "scienti.zip")},
             content_type="multipart/form-data",
         )
@@ -113,14 +113,14 @@ def test_scienti_upload_save_failed(client: FlaskClient) -> None:
 def test_scienti_upload_email_failed(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    with patch("quyca.application.routes.app.scienti_app_router.ScientiService.handle_scienti_upload") as mock_service:
+    with patch("quyca.services.scienti_service.handle_scienti_upload") as mock_service:
         mock_service.return_value = (
             {"success": False, "msg": "Fallo al enviar correo de confirmación"},
             500,
         )
 
         response = client.post(
-            "/app/submit/scienti",
+            "/submit/scienti",
             data={"file": (io.BytesIO(b"zip-content"), "scienti.zip")},
             content_type="multipart/form-data",
         )

@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_coauthorship_by_colombian_department_map_by_institution(client):
@@ -8,7 +8,7 @@ def test_it_can_plot_coauthorship_by_colombian_department_map_by_institution(cli
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/{random_institution_id}/research/products?plot=coauthorship_by_colombian_department_map"
+        f"/affiliation/institution/{random_institution_id}/research/products?plot=coauthorship_by_colombian_department_map"
     )
     assert response.status_code == 200
 
@@ -20,7 +20,7 @@ def test_it_can_plot_coauthorship_by_colombian_department_map_by_faculty(client)
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/faculty/{random_faculty_id}/research/products?plot=coauthorship_by_colombian_department_map"
+        f"/affiliation/faculty/{random_faculty_id}/research/products?plot=coauthorship_by_colombian_department_map"
     )
     assert response.status_code == 200
 
@@ -32,7 +32,7 @@ def test_it_can_plot_coauthorship_by_colombian_department_map_by_department(clie
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/department/{random_department_id}/research/products?plot=coauthorship_by_colombian_department_map"
+        f"/affiliation/department/{random_department_id}/research/products?plot=coauthorship_by_colombian_department_map"
     )
     assert response.status_code == 200
 
@@ -44,6 +44,6 @@ def test_it_can_plot_coauthorship_by_colombian_department_map_by_group(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/group/{random_group_id}/research/products?plot=coauthorship_by_colombian_department_map"
+        f"/affiliation/group/{random_group_id}/research/products?plot=coauthorship_by_colombian_department_map"
     )
     assert response.status_code == 200

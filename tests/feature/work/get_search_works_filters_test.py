@@ -1,7 +1,7 @@
 import pytest
 from flask.testing import FlaskClient
-from quyca.infrastructure.mongo import database
-from quyca.domain.constants.institutions import institutions_list
+from quyca.clients.mongo import database
+from quyca.constants.institutions import institutions_list
 
 affiliation_institution = database["affiliations"].find_one(
     {"products_count": {"$gt": 100}, "types.type": {"$in": institutions_list}}
@@ -10,12 +10,12 @@ person = database["person"].find_one({"products_count": {"$gt": 10}})
 
 
 def test_search_works(client: FlaskClient) -> None:
-    response = client.get(f"/app/search/works/filters?keywords=quantum&max=10&page=10&sort=citations_desc")
+    response = client.get(f"/search/works/filters?keywords=quantum&max=10&page=10&sort=citations_desc")
     assert response.status_code == 200
 
 
 def test_search_works_without_keywords(client: FlaskClient) -> None:
-    response = client.get(f"/app/search/works/filters?max=10&page=10&sort=citations_desc")
+    response = client.get(f"/search/works/filters?max=10&page=10&sort=citations_desc")
     assert response.status_code == 200
 
 
@@ -29,7 +29,7 @@ def test_get_affiliation_research_products_filters_basic(client: FlaskClient) ->
     if not affiliation_types:
         pytest.skip("La afiliación no tiene tipos definidos")
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -43,7 +43,7 @@ def test_get_affiliation_filters_response_structure(client: FlaskClient) -> None
 
     affiliation_id = str(affiliation_institution["_id"])
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -61,7 +61,7 @@ def test_get_affiliation_filters_product_types_structure(client: FlaskClient) ->
 
     affiliation_id = str(affiliation_institution["_id"])
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -84,7 +84,7 @@ def test_get_affiliation_filters_status_structure(client: FlaskClient) -> None:
 
     affiliation_id = str(affiliation_institution["_id"])
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -108,7 +108,7 @@ def test_get_affiliation_filters_countries_structure(client: FlaskClient) -> Non
 
     affiliation_id = str(affiliation_institution["_id"])
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -130,7 +130,7 @@ def test_get_affiliation_filters_topics_structure(client: FlaskClient) -> None:
 
     affiliation_id = str(affiliation_institution["_id"])
 
-    response = client.get(f"/app/affiliation/institution/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/institution/{affiliation_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -140,9 +140,8 @@ def test_get_affiliation_filters_topics_structure(client: FlaskClient) -> None:
 
         if len(data["topics"]) > 0:
             topic = data["topics"][0]
-            assert "label" in topic
-            assert "value" in topic
-            assert "count" in topic
+            assert {"value", "title", "count"} <= set(topic)
+            assert all({"value", "title", "count"} <= set(child) for child in topic.get("children", []))
 
 
 @pytest.mark.parametrize(
@@ -158,7 +157,7 @@ def test_get_affiliation_filters_different_types(
         pytest.skip(f"No hay afiliaciones de tipo institution con productos en la base de datos")
 
     affiliation_id = str(affiliation["_id"])
-    response = client.get(f"/app/affiliation/{affiliation_type}/{affiliation_id}/research/products/filters")
+    response = client.get(f"/affiliation/{affiliation_type}/{affiliation_id}/research/products/filters")
     assert response.status_code in [200, 400]
 
 
@@ -168,7 +167,7 @@ def test_get_person_research_products_filters_basic(client: FlaskClient) -> None
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -182,7 +181,7 @@ def test_get_person_filters_response_structure(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -200,7 +199,7 @@ def test_get_person_filters_product_types_structure(client: FlaskClient) -> None
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -229,7 +228,7 @@ def test_get_person_filters_authors_ranking_structure(client: FlaskClient) -> No
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -249,7 +248,7 @@ def test_get_person_filters_groups_ranking_structure(client: FlaskClient) -> Non
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -269,7 +268,7 @@ def test_get_person_filters_status_structure(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -299,7 +298,7 @@ def test_get_person_filters_years_structure(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -319,7 +318,7 @@ def test_get_person_filters_countries_structure(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -342,7 +341,7 @@ def test_get_person_filters_topics_structure(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -352,9 +351,8 @@ def test_get_person_filters_topics_structure(client: FlaskClient) -> None:
 
         if len(data["topics"]) > 0:
             topic = data["topics"][0]
-            assert "label" in topic
-            assert "value" in topic
-            assert "count" in topic
+            assert {"value", "title", "count"} <= set(topic)
+            assert all({"value", "title", "count"} <= set(child) for child in topic.get("children", []))
             assert isinstance(topic["count"], int)
 
 
@@ -364,7 +362,7 @@ def test_get_person_filters_with_query_params(client: FlaskClient) -> None:
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters?start_year=2020&end_year=2024")
+    response = client.get(f"/person/{person_id}/research/products/filters?start_year=2020&end_year=2024")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -380,7 +378,7 @@ def test_get_person_filters_multiple_persons(client: FlaskClient) -> None:
 
     for person in persons:
         person_id = str(person["_id"])
-        response = client.get(f"/app/person/{person_id}/research/products/filters")
+        response = client.get(f"/person/{person_id}/research/products/filters")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -394,7 +392,7 @@ def test_get_person_filters_product_types_hierarchy(client: FlaskClient) -> None
 
     person_id = str(person["_id"])
 
-    response = client.get(f"/app/person/{person_id}/research/products/filters")
+    response = client.get(f"/person/{person_id}/research/products/filters")
 
     assert response.status_code == 200
     data = response.get_json()

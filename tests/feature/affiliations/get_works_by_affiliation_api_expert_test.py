@@ -1,5 +1,5 @@
-from quyca.infrastructure.mongo import database
-from quyca.domain.constants.institutions import institutions_list
+from quyca.clients.mongo import database
+from quyca.constants.institutions import institutions_list
 
 
 def test_get_works_by_institution_api_expert(client):

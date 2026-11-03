@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_apc_expenses_by_group_by_institution(client):
@@ -8,7 +8,7 @@ def test_it_can_plot_apc_expenses_by_group_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/66e087c2011dd4d56dc32bb5/research/products?plot=apc_expenses_by_group"
+        f"/affiliation/institution/{random_institution_id}/research/products?plot=apc_expenses_by_group"
     )
     assert response.status_code == 200
 
@@ -19,7 +19,7 @@ def test_it_can_plot_apc_expenses_by_group_by_faculty(client):
         .aggregate([{"$match": {"types.type": "faculty"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(f"/app/affiliation/faculty/{random_faculty_id}/research/products?plot=apc_expenses_by_group")
+    response = client.get(f"/affiliation/faculty/{random_faculty_id}/research/products?plot=apc_expenses_by_group")
     assert response.status_code == 200
 
 
@@ -30,6 +30,6 @@ def test_it_can_plot_apc_expenses_by_group_by_department(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/department/{random_department_id}/research/products?plot=apc_expenses_by_group"
+        f"/affiliation/department/{random_department_id}/research/products?plot=apc_expenses_by_group"
     )
     assert response.status_code == 200

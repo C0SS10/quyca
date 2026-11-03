@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_most_used_title_words_by_institution(client):
@@ -8,7 +8,7 @@ def test_it_can_plot_most_used_title_words_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/66b582ad7102ee7e0fcc02c7/research/products?plot=most_used_title_words"
+        f"/affiliation/institution/66b582ad7102ee7e0fcc02c7/research/products?plot=most_used_title_words"
     )
     assert response.status_code == 200
 
@@ -19,7 +19,7 @@ def test_it_can_plot_most_used_title_words_by_faculty(client):
         .aggregate([{"$match": {"types.type": "faculty"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(f"/app/affiliation/faculty/{random_faculty_id}/research/products?plot=most_used_title_words")
+    response = client.get(f"/affiliation/faculty/{random_faculty_id}/research/products?plot=most_used_title_words")
     assert response.status_code == 200
 
 
@@ -30,7 +30,7 @@ def test_it_can_plot_most_used_title_words_by_department(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/department/{random_department_id}/research/products?plot=most_used_title_words"
+        f"/affiliation/department/{random_department_id}/research/products?plot=most_used_title_words"
     )
     assert response.status_code == 200
 
@@ -41,6 +41,6 @@ def test_it_can_plot_most_used_title_words_by_group(client):
         .aggregate([{"$match": {"types.type": "group"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(f"/app/affiliation/group/{random_group_id}/research/products?plot=most_used_title_words")
+    response = client.get(f"/affiliation/group/{random_group_id}/research/products?plot=most_used_title_words")
 
     assert response.status_code == 200

@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_citations_by_faculty_by_institution(client):
@@ -8,6 +8,6 @@ def test_it_can_plot_citations_by_faculty_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/{random_institution_id}/research/products?plot=citations_by_faculty"
+        f"/affiliation/institution/{random_institution_id}/research/products?plot=citations_by_faculty"
     )
     assert response.status_code == 200

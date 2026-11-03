@@ -3,8 +3,7 @@ from flask.testing import FlaskClient
 import csv
 import io
 from bson import ObjectId
-from quyca.infrastructure.mongo import database
-
+from quyca.clients.mongo import database
 
 random_source_with_products = database["sources"].find_one(
     {"products_count": {"$gt": 100, "$lt": 400}}, sort=[("products_count", -1)]
@@ -13,24 +12,24 @@ random_source_id = str(random_source_with_products["_id"]) if random_source_with
 
 
 def test_get_source_products_csv_basic(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
-    assert response.content_type == "text/csv"
+    assert response.content_type == "text/csv; charset=utf-8"
 
 
 def test_get_source_products_csv_headers(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
     assert "Content-Disposition" in response.headers
     assert "attachment" in response.headers["Content-Disposition"]
     assert "filename=source_works.csv" in response.headers["Content-Disposition"]
-    assert response.content_type == "text/csv"
+    assert response.content_type == "text/csv; charset=utf-8"
 
 
 def test_get_source_products_csv_content_structure(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
 
@@ -49,7 +48,7 @@ def test_get_source_products_csv_content_structure(client: FlaskClient) -> None:
 
 
 def test_get_source_products_csv_has_data(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
 
@@ -63,7 +62,7 @@ def test_get_source_products_csv_has_data(client: FlaskClient) -> None:
 
 
 def test_get_source_products_csv_common_columns(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
 
@@ -73,7 +72,7 @@ def test_get_source_products_csv_common_columns(client: FlaskClient) -> None:
 
     headers = rows[0]
 
-    common_columns = ["source_name", "title", "authors_csv", "openalex_citations_count", "doi"]
+    common_columns = ["source_name", "title", "authors", "openalex_citations_count", "doi"]
 
     for column in common_columns:
         matching = [h for h in headers if column.lower() in h.lower()]
@@ -82,13 +81,13 @@ def test_get_source_products_csv_common_columns(client: FlaskClient) -> None:
 
 def test_get_source_products_csv_invalid_object_id(client: FlaskClient) -> None:
     invalid_id = "invalid_id_123"
-    response = client.get(f"/app/source/{invalid_id}/products/csv")
+    response = client.get(f"/source/{invalid_id}/products/csv")
 
     assert response.status_code in [400, 404]
 
 
 def test_get_source_products_csv_encoding(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products/csv")
+    response = client.get(f"/source/{random_source_id}/products/csv")
 
     assert response.status_code == 200
 

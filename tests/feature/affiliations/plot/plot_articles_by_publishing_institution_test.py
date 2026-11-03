@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_articles_by_publishing_institution_by_institution(client):
@@ -8,7 +8,7 @@ def test_it_can_plot_articles_by_publishing_institution_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/{random_institution_id}/research/products?plot=articles_by_publishing_institution"
+        f"/affiliation/institution/{random_institution_id}/research/products?plot=articles_by_publishing_institution"
     )
     assert response.status_code == 200
 
@@ -20,7 +20,7 @@ def test_it_can_plot_articles_by_publishing_institution_by_faculty(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/faculty/{random_faculty_id}/research/products?plot=articles_by_publishing_institution"
+        f"/affiliation/faculty/{random_faculty_id}/research/products?plot=articles_by_publishing_institution"
     )
     assert response.status_code == 200
 
@@ -32,7 +32,7 @@ def test_it_can_plot_articles_by_publishing_institution_by_department(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/department/{random_department_id}/research/products?plot=articles_by_publishing_institution"
+        f"/affiliation/department/{random_department_id}/research/products?plot=articles_by_publishing_institution"
     )
     assert response.status_code == 200
 
@@ -44,6 +44,6 @@ def test_it_can_plot_articles_by_publishing_institution_by_group(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/group/{random_group_id}/research/products?plot=articles_by_publishing_institution"
+        f"/affiliation/group/{random_group_id}/research/products?plot=articles_by_publishing_institution"
     )
     assert response.status_code == 200

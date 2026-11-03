@@ -1,7 +1,6 @@
 from bson import ObjectId
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from flask.testing import FlaskClient
-
 
 random_source = database["sources"].aggregate([{"$sample": {"size": 1}}]).next()
 
@@ -9,7 +8,7 @@ random_source = database["sources"].aggregate([{"$sample": {"size": 1}}]).next()
 def test_get_source_by_id_success(client: FlaskClient) -> None:
     source_id = str(random_source["_id"])
 
-    response = client.get(f"/app/source/{source_id}")
+    response = client.get(f"/source/{source_id}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -22,7 +21,7 @@ def test_get_source_by_id_success(client: FlaskClient) -> None:
 def test_get_source_by_id_response_structure(client: FlaskClient) -> None:
     source_id = str(random_source["_id"])
 
-    response = client.get(f"/app/source/{source_id}")
+    response = client.get(f"/source/{source_id}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -59,7 +58,7 @@ def test_get_source_by_id_names_structure(client: FlaskClient) -> None:
 
     if source_with_names:
         source_id = str(source_with_names["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -75,7 +74,7 @@ def test_get_source_by_id_external_ids_structure(client: FlaskClient) -> None:
 
     if source_with_ids:
         source_id = str(source_with_ids["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -92,7 +91,7 @@ def test_get_source_by_id_citations_count_structure(client: FlaskClient) -> None
 
     if source_with_citations:
         source_id = str(source_with_citations["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -110,7 +109,7 @@ def test_get_source_by_id_ranking_structure(client: FlaskClient) -> None:
 
     if source_with_ranking:
         source_id = str(source_with_ranking["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -130,7 +129,7 @@ def test_get_source_by_id_types_structure(client: FlaskClient) -> None:
 
     if source_with_types:
         source_id = str(source_with_types["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -147,7 +146,7 @@ def test_get_source_by_id_publisher_structure(client: FlaskClient) -> None:
 
     if source_with_publisher:
         source_id = str(source_with_publisher["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -159,7 +158,7 @@ def test_get_source_by_id_publisher_structure(client: FlaskClient) -> None:
 
 def test_get_source_by_id_not_found(client: FlaskClient) -> None:
     fake_id = str(ObjectId())
-    response = client.get(f"/app/source/{fake_id}")
+    response = client.get(f"/source/{fake_id}")
 
     assert response.status_code == 404
     data = response.get_json()
@@ -176,7 +175,7 @@ def test_get_source_by_id_empty_id(client: FlaskClient) -> None:
 def test_get_source_by_id_exclude_none_fields(client: FlaskClient) -> None:
     source_id = str(random_source["_id"])
 
-    response = client.get(f"/app/source/{source_id}")
+    response = client.get(f"/source/{source_id}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -190,7 +189,7 @@ def test_get_source_by_id_exclude_none_fields(client: FlaskClient) -> None:
 def test_get_source_by_id_boolean_fields(client: FlaskClient) -> None:
     source_id = str(random_source["_id"])
 
-    response = client.get(f"/app/source/{source_id}")
+    response = client.get(f"/source/{source_id}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -206,7 +205,7 @@ def test_get_source_by_id_apc_structure(client: FlaskClient) -> None:
 
     if source_with_apc:
         source_id = str(source_with_apc["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -221,7 +220,7 @@ def test_get_source_by_id_multiple_sources(client: FlaskClient) -> None:
 
     for source in sources:
         source_id = str(source["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -234,7 +233,7 @@ def test_get_source_by_id_with_all_fields(client: FlaskClient) -> None:
     source_with_data = database["sources"].find_one(
         {
             "names": {"$exists": True, "$ne": []},
-            "types": {"$exists": True, "$ne": []},
+            "type": {"$exists": True, "$ne": []},
             "external_ids": {"$exists": True, "$ne": []},
             "ranking": {"$exists": True, "$ne": []},
         }
@@ -242,13 +241,20 @@ def test_get_source_by_id_with_all_fields(client: FlaskClient) -> None:
 
     if source_with_data:
         source_id = str(source_with_data["_id"])
-        response = client.get(f"/app/source/{source_id}")
+        response = client.get(f"/source/{source_id}")
 
         assert response.status_code == 200
         data = response.get_json()
 
         source_data = data["data"]
 
-        expected_fields = ["id", "names", "types", "external_ids"]
+        expected_fields = ["id", "names", "type", "external_ids"]
         for field in expected_fields:
             assert field in source_data
+
+
+def test_get_source_by_id_malformed_id_returns_404(client: FlaskClient) -> None:
+    response = client.get("/source/invalid_id_123")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "The source with id invalid_id_123 does not exist."}

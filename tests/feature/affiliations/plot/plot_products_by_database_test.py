@@ -1,4 +1,4 @@
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 
 
 def test_it_can_plot_products_by_database_by_institution(client):
@@ -8,7 +8,7 @@ def test_it_can_plot_products_by_database_by_institution(client):
         .next()["_id"]
     )
     response = client.get(
-        f"/app/affiliation/institution/{random_institution_id}/research/products?plot=products_by_database"
+        f"/affiliation/institution/{random_institution_id}/research/products?plot=products_by_database"
     )
     assert response.status_code == 200
 
@@ -19,7 +19,7 @@ def test_it_can_plot_products_by_database_by_faculty(client):
         .aggregate([{"$match": {"types.type": "faculty"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(f"/app/affiliation/faculty/{random_faculty_id}/research/products?plot=products_by_database")
+    response = client.get(f"/affiliation/faculty/{random_faculty_id}/research/products?plot=products_by_database")
     assert response.status_code == 200
 
 
@@ -29,9 +29,7 @@ def test_it_can_plot_products_by_database_by_department(client):
         .aggregate([{"$match": {"types.type": "department"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(
-        f"/app/affiliation/department/{random_department_id}/research/products?plot=products_by_database"
-    )
+    response = client.get(f"/affiliation/department/{random_department_id}/research/products?plot=products_by_database")
     assert response.status_code == 200
 
 
@@ -41,5 +39,5 @@ def test_it_can_plot_products_by_database_by_group(client):
         .aggregate([{"$match": {"types.type": "group"}}, {"$sample": {"size": 1}}])
         .next()["_id"]
     )
-    response = client.get(f"/app/affiliation/group/{random_group_id}/research/products?plot=products_by_database")
+    response = client.get(f"/affiliation/group/{random_group_id}/research/products?plot=products_by_database")
     assert response.status_code == 200

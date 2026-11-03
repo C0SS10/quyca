@@ -1,9 +1,9 @@
 from flask.testing import FlaskClient
 from pytest import MonkeyPatch
 
-from quyca.domain.exceptions.reranker_unavailable_exception import RerankerUnavailableException
-from quyca.domain.models.theme_model import CurationTopic
-from quyca.domain.services import theme_service
+from quyca.exceptions import RerankerUnavailableException
+from quyca.models.theme_model import CurationTopic
+from quyca.services import theme_service
 
 
 def _topics(n: int) -> list[CurationTopic]:

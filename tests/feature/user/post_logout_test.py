@@ -14,7 +14,7 @@ def auth_cookie(client: FlaskClient) -> None:
 def test_logout_success(client: FlaskClient) -> None:
     auth_cookie(client)
 
-    response = client.post("/app/logout")
+    response = client.post("/logout")
 
     assert response.status_code == 200
     json_data = cast(dict[str, Any], response.get_json())
@@ -27,7 +27,7 @@ def test_logout_success(client: FlaskClient) -> None:
 def test_logout_invalid_token(client: FlaskClient) -> None:
     client.set_cookie("access_token_cookie", "invalid_token")
 
-    response = client.post("/app/logout")
+    response = client.post("/logout")
 
     assert response.status_code == 200
 
@@ -36,5 +36,5 @@ def test_logout_invalid_token(client: FlaskClient) -> None:
 
 
 def test_logout_no_token(client: FlaskClient) -> None:
-    response = client.post("/app/logout")
+    response = client.post("/logout")
     assert response.status_code == 200

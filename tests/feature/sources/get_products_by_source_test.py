@@ -1,7 +1,6 @@
 import pytest
-from quyca.infrastructure.mongo import database
+from quyca.clients.mongo import database
 from flask.testing import FlaskClient
-
 
 random_source_with_products = database["sources"].find_one(
     {"products_count": {"$gt": 200}}, sort=[("products_count", -1)]
@@ -10,29 +9,31 @@ random_source_id = str(random_source_with_products["_id"]) if random_source_with
 
 
 def test_get_source_products_basic(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products")
+    response = client.get(f"/source/{random_source_id}/products")
 
     assert response.status_code == 200
     data = response.get_json()
 
     assert "data" in data
-    assert "total_results" in data
+    assert "meta" in data
+    assert "count" in data["meta"]
+    assert isinstance(data["meta"]["count"], int)
     assert isinstance(data["data"], list)
-    assert isinstance(data["total_results"], int)
+    assert isinstance(data["meta"]["count"], int)
 
 
 def test_get_source_products_with_pagination(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=5&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=5&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
 
     assert len(data["data"]) <= 5
-    assert data["total_results"] >= 0
+    assert data["meta"]["count"] >= 0
 
 
 def test_get_source_products_structure(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=1&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=1&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -49,7 +50,7 @@ def test_get_source_products_structure(client: FlaskClient) -> None:
 
 
 def test_get_source_products_citations_count(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -70,7 +71,7 @@ def test_get_source_products_citations_count(client: FlaskClient) -> None:
 def test_get_source_products_open_access(client: FlaskClient) -> None:
     """Test estructura del campo open_access"""
 
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -94,7 +95,7 @@ def test_get_source_products_open_access(client: FlaskClient) -> None:
 
 
 def test_get_source_products_product_types(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -112,7 +113,7 @@ def test_get_source_products_product_types(client: FlaskClient) -> None:
 
 
 def test_get_source_products_source_field(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=1&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=1&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -138,7 +139,7 @@ def test_get_source_products_source_field(client: FlaskClient) -> None:
 
 
 def test_get_source_products_year_published(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -154,7 +155,7 @@ def test_get_source_products_year_published(client: FlaskClient) -> None:
     "sort_param", ["citations_desc", "citations_asc", "year_desc", "year_asc", "alphabetical_asc", "alphabetical_desc"]
 )
 def test_get_source_products_sorting(client: FlaskClient, sort_param: str) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1&sort={sort_param}")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1&sort={sort_param}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -165,23 +166,26 @@ def test_get_source_products_sorting(client: FlaskClient, sort_param: str) -> No
 
 def test_get_source_products_invalid_object_id(client: FlaskClient) -> None:
     invalid_id = "invalid_id_123"
-    response = client.get(f"/app/source/{invalid_id}/products?max=10&page=1")
+    response = client.get(f"/source/{invalid_id}/products?max=10&page=1")
 
-    assert response.status_code in [400, 404]
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid id 'invalid_id_123'."}
 
 
 def test_get_source_products_without_params(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products")
+    response = client.get(f"/source/{random_source_id}/products")
 
     assert response.status_code == 200
     data = response.get_json()
 
     assert "data" in data
-    assert "total_results" in data
+    assert "meta" in data
+    assert "count" in data["meta"]
+    assert isinstance(data["meta"]["count"], int)
 
 
 def test_get_source_products_page_beyond_results(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=99999")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=99999")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -191,7 +195,7 @@ def test_get_source_products_page_beyond_results(client: FlaskClient) -> None:
 
 
 def test_get_source_products_max_limit(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=250&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=250&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -200,16 +204,16 @@ def test_get_source_products_max_limit(client: FlaskClient) -> None:
 
 
 def test_get_source_products_total_results_consistency(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()
 
-    assert data["total_results"] >= len(data["data"])
+    assert data["meta"]["count"] >= len(data["data"])
 
 
 def test_get_source_products_apc_field(client: FlaskClient) -> None:
-    response = client.get(f"/app/source/{random_source_id}/products?max=10&page=1")
+    response = client.get(f"/source/{random_source_id}/products?max=10&page=1")
 
     assert response.status_code == 200
     data = response.get_json()

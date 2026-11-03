@@ -1,63 +1,25 @@
+# The app reads its config from .env.dev / .env.prod (see .env.example), mounted with the code in /app.
+x-quyca: &quyca
+  network_mode: host
+  restart: unless-stopped
+  volumes:
+    - .:/app
+
 services:
   dev:
+    <<: *quyca
     container_name: quyca-dev
-    network_mode: host
-    restart: on-failure
-    build:
-      network: host
-      context: .
-      dockerfile: Dockerfile
-      target: development
     image: colav/quyca-dev:dev
-    working_dir: /app
-    environment:
-      PYTHONPATH: /quyca
-    entrypoint: ["poetry", "run", "python", "./quyca/app.py"]
+    build:
+      context: .
+      network: host
+      target: development
 
   prod:
+    <<: *quyca
     container_name: quyca-prod
-    network_mode: host
-    restart: on-failure
-    build:
-      network: host
-      context: .
-      dockerfile: Dockerfile
-      target: production
     image: colav/quyca-prod:latest
-    volumes:
-      - .:/app
-    working_dir: /app
-    environment:
-      PYTHONPATH: /app/quyca
-    entrypoint:
-      - poetry
-      - run
-      - gunicorn
-      - --bind
-      - 0.0.0.0:${APP_PORT}
-      - --workers
-      - "12"
-      - --timeout
-      - "600"
-      - app:create_app()
-      - --access-logfile
-      - "-"
-      - --error-logfile
-      - "-"
-
-  local:
-    container_name: quyca-local
-    network_mode: host
-    restart: on-failure
     build:
-      network: host
       context: .
-      dockerfile: Dockerfile
-      target: local
-    image: colav/quyca-local:local
-    volumes:
-      - .:/app
-    working_dir: /app
-    environment:
-      PYTHONPATH: /quyca
-    entrypoint: ["poetry", "run", "python", "./quyca/app.py"]
+      network: host
+      target: production
