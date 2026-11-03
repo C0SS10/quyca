@@ -29,7 +29,7 @@ def _codes(issues: list) -> list[tuple]:
 
 def _check(column: str, value: Any) -> Any:
     spec = SPECS[column]
-    return validator.CHECKERS[spec.kind](value, spec)
+    return validator._CHECKERS[spec.kind](value, spec)
 
 
 class TestStructure:

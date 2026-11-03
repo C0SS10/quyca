@@ -19,7 +19,7 @@ def validate_project_file(file_stream: BytesIO | IO[bytes], filename: str) -> di
         total_projects = len(
             {values["codigo_proyecto"] for _, values in normalized_rows if values.get("codigo_proyecto")}
         )
-    issues.sort(key=issue_sort_key)
+    issues.sort(key=_issue_sort_key)
     errors_count = sum(issue.severity == "error" for issue in issues)
     report = ProjectFileReport(
         schema_version=SCHEMA_VERSION,
@@ -34,5 +34,5 @@ def validate_project_file(file_stream: BytesIO | IO[bytes], filename: str) -> di
     return {"data": project_file_parser.parse_project_file_report(report)}
 
 
-def issue_sort_key(issue: ValidationIssue) -> tuple:
+def _issue_sort_key(issue: ValidationIssue) -> tuple:
     return issue.row or 0, issue.column or ""

@@ -18,7 +18,7 @@ SINGLE_DOCUMENT_DEFAULTS: dict[str, dict] = {
     "authors_count": {"max_authors": None, "min_authors": None},
 }
 
-GLOBAL_FILTERS_CACHE: dict = {}
+_GLOBAL_FILTERS_CACHE: dict = {}
 
 
 def build_works_match(query_params: QueryParams) -> list[dict]:
@@ -39,10 +39,10 @@ def get_global_works_filters() -> dict:
     document = database[FILTERS_COLLECTION].find_one({"_id": GLOBAL_WORKS_FILTERS_ID}, {"filters": 1})
     if document:
         return document["filters"]
-    if not GLOBAL_FILTERS_CACHE:
+    if not _GLOBAL_FILTERS_CACHE:
         logger.warning("%s.%s is missing, computing it in this worker", FILTERS_COLLECTION, GLOBAL_WORKS_FILTERS_ID)
-        GLOBAL_FILTERS_CACHE.update(compute_works_available_filters([]))
-    return GLOBAL_FILTERS_CACHE
+        _GLOBAL_FILTERS_CACHE.update(compute_works_available_filters([]))
+    return _GLOBAL_FILTERS_CACHE
 
 
 def save_global_works_filters(filters: dict, duration_seconds: float) -> None:

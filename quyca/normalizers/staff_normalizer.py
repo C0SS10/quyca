@@ -31,7 +31,7 @@ from quyca.constants.staff_field_values import (
 # Excel epoch: days since 1899-12-30
 
 # Columns subject to semantic mapping and their respective maps
-FIELD_MAPS: dict[str, dict[str, str]] = {
+_FIELD_MAPS: dict[str, dict[str, str]] = {
     "tipo_documento": DOCUMENT_TYPE_MAP,
     "nivel_académico": ACADEMIC_LEVEL_MAP,
     "tipo_contrato": CONTRACT_TYPE_MAP,
@@ -40,12 +40,12 @@ FIELD_MAPS: dict[str, dict[str, str]] = {
     "sexo": SEX_MAP,
 }
 
-DATE_FIELDS = ["fecha_nacimiento", "fecha_inicial_vinculación", "fecha_final_vinculación"]
-NUMERIC_TEXT_FIELDS = {"identificación"}
-INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
+_DATE_FIELDS = ["fecha_nacimiento", "fecha_inicial_vinculación", "fecha_final_vinculación"]
+_NUMERIC_TEXT_FIELDS = {"identificación"}
+_INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
 
-UNKNOWN_VALUE = "desconocido"
-UNKNOWN_ALIASES = {
+_UNKNOWN_VALUE = "desconocido"
+_UNKNOWN_ALIASES = {
     "desconocido",
     "desconocida",
     "sin dato",
@@ -57,73 +57,73 @@ UNKNOWN_ALIASES = {
     "n/a",
     "na",
 }
-MAP_TO_UNKNOWN_FIELDS = {
+_MAP_TO_UNKNOWN_FIELDS = {
     "nivel_académico",
     "tipo_contrato",
     "jornada_laboral",
     "categoría_laboral",
     "sexo",
 }
-DATE_MAP_TO_UNKNOWN_FIELDS = set(DATE_FIELDS)
+_DATE_MAP_TO_UNKNOWN_FIELDS = set(_DATE_FIELDS)
 
-ORCID_CODE_RE = re.compile(r"([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])")
-CVLAC_URL_RE = re.compile(r"cod_rh=([0-9]+)")
-SCHOLAR_CODE_RE = re.compile(r"(?:https?://)?scholar\.google\.com/citations\?(?:.*&)?user=([A-Za-z0-9_-]+)")
-RESEARCHGATE_CODE_RE = re.compile(r"(?:https?://)?(?:www\.)?researchgate\.net/profile/([A-Za-z0-9_-]+)")
+_ORCID_CODE_RE = re.compile(r"([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])")
+_CVLAC_URL_RE = re.compile(r"cod_rh=([0-9]+)")
+_SCHOLAR_CODE_RE = re.compile(r"(?:https?://)?scholar\.google\.com/citations\?(?:.*&)?user=([A-Za-z0-9_-]+)")
+_RESEARCHGATE_CODE_RE = re.compile(r"(?:https?://)?(?:www\.)?researchgate\.net/profile/([A-Za-z0-9_-]+)")
 
 
-def normalize_orcid(value: str) -> str:
+def _normalize_orcid(value: str) -> str:
     """Extracts ORCID code and returns canonical URL."""
-    m = ORCID_CODE_RE.search(value)
+    m = _ORCID_CODE_RE.search(value)
     return f"https://orcid.org/{m.group(1)}" if m else value
 
 
-def normalize_cvlac(value: str) -> str:
+def _normalize_cvlac(value: str) -> str:
     """Extracts cod_rh from URL or cleans apostrophe — always returns the code as string."""
     value = value.lstrip("'")
-    m = CVLAC_URL_RE.search(value)
+    m = _CVLAC_URL_RE.search(value)
     return m.group(1) if m else value
 
 
-def normalize_scholar(value: str) -> str:
+def _normalize_scholar(value: str) -> str:
     """Extracts user ID and returns canonical URL."""
-    m = SCHOLAR_CODE_RE.search(value)
+    m = _SCHOLAR_CODE_RE.search(value)
     return f"https://scholar.google.com/citations?user={m.group(1)}" if m else value
 
 
-def normalize_researchgate(value: str) -> str:
+def _normalize_researchgate(value: str) -> str:
     """Extracts slug and returns canonical URL."""
-    m = RESEARCHGATE_CODE_RE.search(value)
+    m = _RESEARCHGATE_CODE_RE.search(value)
     return f"https://www.researchgate.net/profile/{m.group(1)}" if m else value
 
 
-IDENTIFIER_EXTRACTORS: dict[str, Callable[..., Any]] = {
-    "orcid": normalize_orcid,
-    "cvlac": normalize_cvlac,
-    "scholar": normalize_scholar,
-    "researchgate": normalize_researchgate,
+_IDENTIFIER_EXTRACTORS: dict[str, Callable[..., Any]] = {
+    "orcid": _normalize_orcid,
+    "cvlac": _normalize_cvlac,
+    "scholar": _normalize_scholar,
+    "researchgate": _normalize_researchgate,
 }
 
 
-def normalize_header(header: str) -> str:
+def _normalize_header(header: str) -> str:
     """Normalizes header formatting while preserving accents for later canonical matching."""
     return str(header).strip().lower().replace(" ", "_").replace("-", "_")
 
 
-NORMALIZED_FIELD_MAPS: dict[str, dict[str, str]] = {
+_NORMALIZED_FIELD_MAPS: dict[str, dict[str, str]] = {
     field: {normalize_key(alias): canonical for alias, canonical in mapping.items()}
-    for field, mapping in FIELD_MAPS.items()
+    for field, mapping in _FIELD_MAPS.items()
 }
 
 
-def is_meaningful_change(original: str, normalized: str) -> bool:
+def _is_meaningful_change(original: str, normalized: str) -> bool:
     """Avoids logging cosmetic changes (case/accents/spacing only)."""
-    if normalized == UNKNOWN_VALUE:
-        return normalize_key(original) != UNKNOWN_VALUE
+    if normalized == _UNKNOWN_VALUE:
+        return normalize_key(original) != _UNKNOWN_VALUE
     return normalize_key(original) != normalize_key(normalized)
 
 
-def is_valid_short_date(value: str) -> bool:
+def _is_valid_short_date(value: str) -> bool:
     """Checks DD/MM/YYYY format for date catalog validation."""
     try:
         datetime.strptime(value.strip(), "%d/%m/%Y")
@@ -141,23 +141,23 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # Normalize column names
-    df.columns = [normalize_header(c) for c in df.columns]
+    df.columns = [_normalize_header(c) for c in df.columns]
 
     # Strip string cells
     df = df.apply(lambda col: col.map(lambda v: v.strip() if isinstance(v, str) else v))
 
     # Convert Excel serial dates in known date columns
-    for field in DATE_FIELDS:
+    for field in _DATE_FIELDS:
         if field in df.columns:
-            df[field] = df[field].apply(parse_date)
+            df[field] = df[field].apply(_parse_date)
 
     # Convert numeric-looking identifiers/codes to real numeric values when safe.
-    for field in NUMERIC_TEXT_FIELDS:
+    for field in _NUMERIC_TEXT_FIELDS:
         if field in df.columns:
-            df[field] = df[field].apply(coerce_numeric_scalar)
+            df[field] = df[field].apply(_coerce_numeric_scalar)
 
     # Extract IDs from URLs for identifier fields
-    for field, extractor in IDENTIFIER_EXTRACTORS.items():
+    for field, extractor in _IDENTIFIER_EXTRACTORS.items():
         if field in df.columns:
             df[field] = df[field].apply(
                 lambda v: extractor(str(v).strip()) if isinstance(v, str) and str(v).strip() else v
@@ -166,7 +166,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def parse_date(value: Any) -> Any:
+def _parse_date(value: Any) -> Any:
     """Converts Excel numeric date serials to DD/MM/YYYY; leaves other values unchanged."""
     if isinstance(value, (pd.Timestamp, datetime, date)) and not pd.isna(value):
         try:
@@ -183,7 +183,7 @@ def parse_date(value: Any) -> Any:
     return value
 
 
-def coerce_numeric_scalar(value: Any) -> Any:
+def _coerce_numeric_scalar(value: Any) -> Any:
     """Convert safe numeric-looking values to ints so Excel writes them as numeric cells."""
     if pd.isna(value):
         return value
@@ -198,7 +198,7 @@ def coerce_numeric_scalar(value: Any) -> Any:
 
     if isinstance(value, str):
         stripped = value.strip()
-        if INTEGER_TEXT_RE.match(stripped):
+        if _INTEGER_TEXT_RE.match(stripped):
             integer_part = stripped.split(".", 1)[0]
             if len(integer_part) > 1 and integer_part.startswith("0"):
                 return value
@@ -225,7 +225,7 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     df = df.copy()
     changelog: list[dict[str, Any]] = []
 
-    for field, mapping in NORMALIZED_FIELD_MAPS.items():
+    for field, mapping in _NORMALIZED_FIELD_MAPS.items():
         if field not in df.columns:
             continue
 
@@ -237,12 +237,12 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
             lookup_key = normalize_key(raw_str)
             canonical = mapping.get(lookup_key)
 
-            if canonical is None and field in MAP_TO_UNKNOWN_FIELDS:
-                canonical = UNKNOWN_VALUE
+            if canonical is None and field in _MAP_TO_UNKNOWN_FIELDS:
+                canonical = _UNKNOWN_VALUE
 
             if canonical is not None and canonical != raw_str:
                 df.at[idx, field] = canonical
-                if is_meaningful_change(raw_str, canonical):
+                if _is_meaningful_change(raw_str, canonical):
                     changelog.append(
                         {
                             "fila": int(str(idx)),
@@ -255,7 +255,7 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
 
     # Date unknown mapping is intentionally conservative: only known
     # "unknown" aliases are mapped; malformed date values remain for validators.
-    for field in DATE_MAP_TO_UNKNOWN_FIELDS:
+    for field in _DATE_MAP_TO_UNKNOWN_FIELDS:
         if field not in df.columns:
             continue
 
@@ -266,18 +266,18 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
             raw_str = str(raw_value).strip()
             lookup_key = normalize_key(raw_str)
 
-            if is_valid_short_date(raw_str):
+            if _is_valid_short_date(raw_str):
                 continue
 
-            if lookup_key in UNKNOWN_ALIASES and raw_str != UNKNOWN_VALUE:
-                df.at[idx, field] = UNKNOWN_VALUE
+            if lookup_key in _UNKNOWN_ALIASES and raw_str != _UNKNOWN_VALUE:
+                df.at[idx, field] = _UNKNOWN_VALUE
                 changelog.append(
                     {
                         "fila": int(str(idx)),
                         "fila_excel": int(str(idx)) + 2,
                         "columna": field,
                         "valor_original": raw_str,
-                        "valor_normalizado": UNKNOWN_VALUE,
+                        "valor_normalizado": _UNKNOWN_VALUE,
                     }
                 )
 

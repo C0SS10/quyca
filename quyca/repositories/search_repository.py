@@ -89,15 +89,15 @@ def search_count_projects(query_params: QueryParams) -> int:
     return base_repository.count(database["projects"], base_repository.text_search_match(query_params.keywords))
 
 
-def geo_match(query_params: QueryParams, geo_type: str) -> list[dict]:
+def _geo_match(query_params: QueryParams, geo_type: str) -> list[dict]:
     return base_repository.text_search_match(query_params.keywords) + [{"$match": {"type": geo_type}}]
 
 
 def search_geo(query_params: QueryParams, geo_type: str) -> Generator:
-    pipeline = geo_match(query_params, geo_type)
+    pipeline = _geo_match(query_params, geo_type)
     base_repository.set_search_end_stages(pipeline, query_params, {"collection": "geo"})
     return geo_generator.get(database["geo"].aggregate(pipeline))
 
 
 def search_count_geo(query_params: QueryParams, geo_type: str) -> int:
-    return base_repository.count(database["geo"], geo_match(query_params, geo_type))
+    return base_repository.count(database["geo"], _geo_match(query_params, geo_type))

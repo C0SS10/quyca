@@ -235,7 +235,7 @@ def generate_staff_report(
     normalized_changes: list[dict[str, Any]] | None = None,
 ) -> tuple[StaffReport, list[dict]]:
     """Validates the dataframe and generates the Staff report attachments (annotated Excel, plus PDF when needed)."""
-    has_nombre_completo = has_nombre_completo(df)
+    has_nombre_completo = _has_nombre_completo(df)
     staff_report: StaffReport = staff_validator.validate_dataframe(df)
 
     attachments: list[dict] = []
@@ -283,7 +283,7 @@ def save_staff_files(
         raise ValueError("institution es requerida")
 
     result_original = file_repository.save_file(
-        dataframe_to_filestorage(df_original, original_filename),
+        _dataframe_to_filestorage(df_original, original_filename),
         ror_id,
         institution,
         file_type="staff",
@@ -291,7 +291,7 @@ def save_staff_files(
     )
 
     result_normalized = file_repository.save_file(
-        dataframe_to_filestorage(df_normalized, original_filename),
+        _dataframe_to_filestorage(df_normalized, original_filename),
         ror_id,
         institution,
         file_type="staff",
@@ -304,11 +304,11 @@ def save_staff_files(
     }
 
 
-def has_nombre_completo(df: pd.DataFrame) -> bool:
+def _has_nombre_completo(df: pd.DataFrame) -> bool:
     return any(str(column).strip().lower().replace(" ", "_") == "nombre_completo" for column in df.columns)
 
 
-def dataframe_to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
+def _dataframe_to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
     """Converts a DataFrame to a FileStorage writing to a temp file first,
     so FileStorage.save() reads from a real file-backed stream."""
     df_to_save = df.copy()

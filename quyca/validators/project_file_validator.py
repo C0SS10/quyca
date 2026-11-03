@@ -72,10 +72,10 @@ def validate_row(row: ProjectFileRow, columns: list[str]) -> tuple[dict[str, Any
     for spec in PROJECT_FILE_COLUMNS:
         if spec.name not in columns:
             continue
-        value, columnmake_issues = validate_column(row.row_number, spec, row.values.get(spec.name))
+        value, columnmake_issues = _validate_column(row.row_number, spec, row.values.get(spec.name))
         normalized[spec.name] = value
         issues.extend(columnmake_issues)
-    issues.extend(validate_cross_fields(row.row_number, normalized))
+    issues.extend(_validate_cross_fields(row.row_number, normalized))
     return normalized, issues
 
 
@@ -111,7 +111,7 @@ def validate_project_consistency(rows: list[NormalizedRow]) -> list[ValidationIs
     return issues
 
 
-def validate_column(row_number: int, spec: ColumnSpec, raw: Any) -> tuple[Any, list[ValidationIssue]]:
+def _validate_column(row_number: int, spec: ColumnSpec, raw: Any) -> tuple[Any, list[ValidationIssue]]:
     items = split_items(raw) if spec.multi else ([] if raw is None else [raw])
     if not items:
         issues = []
@@ -127,7 +127,7 @@ def validate_column(row_number: int, spec: ColumnSpec, raw: Any) -> tuple[Any, l
             )
         return ([] if spec.multi else None), issues
 
-    checker = CHECKERS[spec.kind]
+    checker = _CHECKERS[spec.kind]
     values: list[Any] = []
     issues = []
     for item in items:
@@ -147,7 +147,7 @@ def validate_column(row_number: int, spec: ColumnSpec, raw: Any) -> tuple[Any, l
     return (values[0] if values else None), issues
 
 
-def validate_cross_fields(row_number: int, values: dict[str, Any]) -> list[ValidationIssue]:
+def _validate_cross_fields(row_number: int, values: dict[str, Any]) -> list[ValidationIssue]:
     issues = []
     start, end = values.get("fecha_inicio"), values.get("fecha_fin")
     if start and end and end < start:
@@ -202,18 +202,18 @@ def validate_cross_fields(row_number: int, values: dict[str, Any]) -> list[Valid
     return issues
 
 
-def check_text(value: Any, spec: ColumnSpec) -> str:
+def _check_text(value: Any, spec: ColumnSpec) -> str:
     return to_text(value)
 
 
-def check_enum(value: Any, spec: ColumnSpec) -> str:
+def _check_enum(value: Any, spec: ColumnSpec) -> str:
     canonical = {normalize_token(option): option for option in spec.allowed}.get(normalize_token(to_text(value)))
     if canonical is None:
         raise ValueError(f"Valor '{value}' no admitido. Valores admitidos: {', '.join(spec.allowed)}.")
     return canonical
 
 
-def check_date(value: Any, spec: ColumnSpec) -> date:
+def _check_date(value: Any, spec: ColumnSpec) -> date:
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
@@ -226,7 +226,7 @@ def check_date(value: Any, spec: ColumnSpec) -> date:
     raise ValueError("Fecha inválida. Use el formato DD/MM/YYYY (celda con formato de fecha en Excel).")
 
 
-def check_money(value: Any, spec: ColumnSpec) -> int:
+def _check_money(value: Any, spec: ColumnSpec) -> int:
     if isinstance(value, bool):
         raise ValueError("Debe ser un valor numérico en COP.")
     if isinstance(value, int):
@@ -244,21 +244,21 @@ def check_money(value: Any, spec: ColumnSpec) -> int:
     return number
 
 
-def check_document_id(value: Any, spec: ColumnSpec) -> str:
+def _check_document_id(value: Any, spec: ColumnSpec) -> str:
     text = to_text(value)
     if not SINGLE_TOKEN_REGEX.fullmatch(text):
         raise ValueError("Debe ser un único número de documento, sin espacios ni separadores.")
     return text
 
 
-def check_ror(value: Any, spec: ColumnSpec) -> str:
+def _check_ror(value: Any, spec: ColumnSpec) -> str:
     text = re.sub(r"^https?://ror\.org/", "", to_text(value).lower())
     if not ROR_REGEX.fullmatch(text):
         raise ValueError("Código ROR inválido (ej. 03bp5hc83).")
     return text
 
 
-def check_ror_or_wikidata(value: Any, spec: ColumnSpec) -> str:
+def _check_ror_or_wikidata(value: Any, spec: ColumnSpec) -> str:
     text = to_text(value).lower()
     text = re.sub(r"^https?://ror\.org/", "", text)
     text = re.sub(r"^https?://(www\.)?wikidata\.org/(wiki|entity)/", "", text)
@@ -269,7 +269,7 @@ def check_ror_or_wikidata(value: Any, spec: ColumnSpec) -> str:
     raise ValueError("Identificador inválido. Use un código ROR (ej. 03bp5hc83) o un ID de Wikidata (ej. Q12345).")
 
 
-def check_geonames(value: Any, spec: ColumnSpec) -> str:
+def _check_geonames(value: Any, spec: ColumnSpec) -> str:
     text = re.sub(r"^https?://(www\.)?geonames\.org/", "", to_text(value))
     match = GEONAMES_REGEX.fullmatch(text)
     if match is None:
@@ -277,15 +277,15 @@ def check_geonames(value: Any, spec: ColumnSpec) -> str:
     return match.group(1)
 
 
-CHECKERS = {
-    "text": check_text,
-    "enum": check_enum,
-    "date": check_date,
-    "money": check_money,
-    "document_id": check_document_id,
-    "ror": check_ror,
-    "ror_or_wikidata": check_ror_or_wikidata,
-    "geonames": check_geonames,
+_CHECKERS = {
+    "text": _check_text,
+    "enum": _check_enum,
+    "date": _check_date,
+    "money": _check_money,
+    "document_id": _check_document_id,
+    "ror": _check_ror,
+    "ror_or_wikidata": _check_ror_or_wikidata,
+    "geonames": _check_geonames,
 }
 
 

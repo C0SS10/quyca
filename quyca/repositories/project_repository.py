@@ -25,7 +25,7 @@ def get_projects_by_affiliation(
     pipeline_params: dict | None = None,
 ) -> Generator:
     match = base_repository.affiliation_match(affiliation_id, affiliation_type)
-    return get_projects([{"$match": match}], query_params, pipeline_params)
+    return _get_projects([{"$match": match}], query_params, pipeline_params)
 
 
 def get_projects_count_by_affiliation(affiliation_id: str, affiliation_type: str) -> int:
@@ -34,13 +34,13 @@ def get_projects_count_by_affiliation(affiliation_id: str, affiliation_type: str
 
 
 def get_projects_by_person(person_id: str, query_params: QueryParams, pipeline_params: dict | None = None) -> Generator:
-    return get_projects([{"$match": {"authors.id": person_id}}], query_params, pipeline_params)
+    return _get_projects([{"$match": {"authors.id": person_id}}], query_params, pipeline_params)
 
 
 def get_projects_count_by_person(person_id: str) -> int:
     return base_repository.count(database["projects"], [{"$match": {"authors.id": person_id}}])
 
 
-def get_projects(match_stages: list[dict], query_params: QueryParams, pipeline_params: dict | None) -> Generator:
+def _get_projects(match_stages: list[dict], query_params: QueryParams, pipeline_params: dict | None) -> Generator:
     pipeline = base_repository.set_search_end_stages(match_stages, query_params, pipeline_params)
     return project_generator.get(database["projects"].aggregate(pipeline))

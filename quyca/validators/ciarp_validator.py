@@ -37,10 +37,10 @@ REQUIRED_COLUMNS = [
 ]
 
 
-INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
+_INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
 
 
-def coerce_integer_like(value: Any) -> Any:
+def _coerce_integer_like(value: Any) -> Any:
     """Convert safe integer-like values stored as text or floats to ints."""
     if pd.isna(value):
         return value
@@ -55,7 +55,7 @@ def coerce_integer_like(value: Any) -> Any:
 
     if isinstance(value, str):
         stripped = value.strip()
-        if INTEGER_TEXT_RE.match(stripped):
+        if _INTEGER_TEXT_RE.match(stripped):
             integer_part = stripped.split(".", 1)[0]
             if len(integer_part) > 1 and integer_part.startswith("0"):
                 return value
@@ -64,7 +64,7 @@ def coerce_integer_like(value: Any) -> Any:
     return value
 
 
-NORMALIZED_REQUIRED = {normalize_key(c): c for c in REQUIRED_COLUMNS}
+_NORMALIZED_REQUIRED = {normalize_key(c): c for c in REQUIRED_COLUMNS}
 
 
 def validate_columns(df: pd.DataFrame) -> Tuple[bool, List[str], List[str]]:
@@ -95,7 +95,7 @@ def validate_columns(df: pd.DataFrame) -> Tuple[bool, List[str], List[str]]:
         errors.append(f"Columnas faltantes: {', '.join(missing)}")
 
     # Only the template columns are used, with their canonical names; any other column is ignored.
-    usecols = [NORMALIZED_REQUIRED[normalize_key(c)] for c in usecols if normalize_key(c) in NORMALIZED_REQUIRED]
+    usecols = [_NORMALIZED_REQUIRED[normalize_key(c)] for c in usecols if normalize_key(c) in _NORMALIZED_REQUIRED]
 
     return (len(errors) == 0, errors, usecols)
 
@@ -143,14 +143,14 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
 
     df = df.dropna(how="all").reset_index(drop=True)
     df = df.map(lambda v: v.strip() if isinstance(v, str) else v)
-    df = df.map(lambda x: str(int(x)) if isinstance(x, float) and x.is_integer() else x)
+    df = df.apply(lambda x: str(int(x)) if isinstance(x, float) and x.is_integer() else x)
 
     for field in ["identificación", "año"]:
         if field in df.columns:
-            df[field] = df[field].apply(coerce_integer_like)
+            df[field] = df[field].apply(_coerce_integer_like)
 
-    for idx, row in enumerate(df.to_dict(orient="records")):
-        result = validate_row(row, idx)
+    for idx, row in df.iterrows():
+        result = validate_row(row.to_dict(), idx)
         errors.extend(result["errors"])
         warnings.extend(result["warnings"])
 
@@ -164,15 +164,11 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
 
         if dup_mask.any():
             total_dups = int(dup_mask.sum())
-            duplicate_positions = [
-                idx for idx, is_duplicate in enumerate(dup_mask.tolist()) if is_duplicate
-            ]
-            for idx in duplicate_positions:
-                row = df.iloc[idx]
+            for idx, row in df[dup_mask].iterrows():
                 duplicate_info.append(
                     {
-                        "index": idx,
-                        "index_excel": base_validator.excel_row_index(idx),
+                        "index": int(idx),
+                        "index_excel": base_validator.excel_row_index(int(idx)),
                         "row": row.to_dict(),
                     }
                 )

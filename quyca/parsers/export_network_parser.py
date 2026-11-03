@@ -6,7 +6,7 @@ from quyca.models.calculations_model import Calculations
 PARENTHETICAL_SUFFIX = re.compile(r"\s*\([^)]*\)")
 
 
-def normalize_label(raw_label: str) -> str:
+def _normalize_label(raw_label: str) -> str:
     return PARENTHETICAL_SUFFIX.sub("", raw_label).strip()
 
 
@@ -14,7 +14,7 @@ def node_label(node: Any) -> Optional[str]:
     name = getattr(node, "name", None)
     if not name:
         return None
-    return normalize_label(name)
+    return _normalize_label(name)
 
 
 def parse_institutional_coauthorship_network_nodes(data: Calculations) -> Iterator[str]:

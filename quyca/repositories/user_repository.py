@@ -8,7 +8,7 @@ from quyca.security.password_hasher import verify_password
 users_collection = impactu_database["users"]
 
 
-def to_user(document: dict) -> User:
+def _to_user(document: dict) -> User:
     """Builds a User from a users document fetched without the password hash."""
     return User(
         id=str(document["_id"]),
@@ -52,7 +52,7 @@ def get_user_by_email_and_password(email: str, password: str) -> User:
 
 def get_user_by_email(email: str) -> Optional[User]:
     document = users_collection.find_one({"email": email.strip().lower()}, {"password": 0})
-    return to_user(document) if document else None
+    return _to_user(document) if document else None
 
 
 def create_user(user: User) -> None:
@@ -77,7 +77,7 @@ def create_user(user: User) -> None:
 
 def get_all_users() -> List[User]:
     """Returns all users without exposing password hashes."""
-    return [to_user(u) for u in users_collection.find({}, {"password": 0})]
+    return [_to_user(u) for u in users_collection.find({}, {"password": 0})]
 
 
 def update_user_password(email: str, new_password_hash: str) -> User:
@@ -90,7 +90,7 @@ def update_user_password(email: str, new_password_hash: str) -> User:
     updated = users_collection.find_one({"email": email.lower()}, {"password": 0})
     if not updated:
         raise NotEntityException(f"Usuario con correo {email} no encontrado")
-    return to_user(updated)
+    return _to_user(updated)
 
 
 def deactivate_user(email: str) -> None:
@@ -130,7 +130,7 @@ def update_user_info(old_email: str, new_email: str, new_role: str) -> Optional[
         update["role"] = new_role
 
     if not update:
-        return to_user(doc)
+        return _to_user(doc)
 
     users_collection.update_one({"email": old_email}, {"$set": update})
 
@@ -138,7 +138,7 @@ def update_user_info(old_email: str, new_email: str, new_role: str) -> Optional[
     if not updated:
         return None
 
-    return to_user(updated)
+    return _to_user(updated)
 
 
 def get_user_by_ror_id(ror_id: str) -> Optional[User]:
@@ -147,7 +147,7 @@ def get_user_by_ror_id(ror_id: str) -> Optional[User]:
     if not doc:
         return None
 
-    return to_user(doc)
+    return _to_user(doc)
 
 
 def regenerate_apikey(email: str, new_apikey: Dict[str, Any]) -> None:
