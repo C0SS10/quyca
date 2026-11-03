@@ -15,14 +15,14 @@ from quyca.constants.staff_field_values import (
     SEX_MAP,
 )
 
-_UNKNOWN_VALUE = "desconocido"
+UNKNOWN_VALUE = "desconocido"
 
 
-def _is_known_value(value: Any, canonicals: set[str], aliases: dict[str, str]) -> bool:
+def is_known_value(value: Any, canonicals: set[str], aliases: dict[str, str]) -> bool:
     normalized = normalize_key(value)
     normalized_canonicals = {normalize_key(item) for item in canonicals}
     normalized_aliases = {normalize_key(item) for item in aliases.keys()}
-    return normalized in normalized_canonicals or normalized in normalized_aliases or normalized == _UNKNOWN_VALUE
+    return normalized in normalized_canonicals or normalized in normalized_aliases or normalized == UNKNOWN_VALUE
 
 
 def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -30,7 +30,7 @@ def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str
     warnings: List[Dict[str, Any]] = []
 
     nivel = row.get("nivel_académico")
-    if not base_validator.is_empty(nivel) and not _is_known_value(nivel, ACADEMIC_LEVELS, ACADEMIC_LEVEL_MAP):
+    if not base_validator.is_empty(nivel) and not is_known_value(nivel, ACADEMIC_LEVELS, ACADEMIC_LEVEL_MAP):
         warnings.append(
             {
                 "fila": index,
@@ -41,7 +41,7 @@ def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str
         )
 
     tc = row.get("tipo_contrato")
-    if not base_validator.is_empty(tc) and not _is_known_value(tc, CONTRACT_TYPES, CONTRACT_TYPE_MAP):
+    if not base_validator.is_empty(tc) and not is_known_value(tc, CONTRACT_TYPES, CONTRACT_TYPE_MAP):
         warnings.append(
             {
                 "fila": index,
@@ -52,7 +52,7 @@ def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str
         )
 
     jr = row.get("jornada_laboral")
-    if not base_validator.is_empty(jr) and not _is_known_value(jr, WORK_SCHEDULES, WORK_SCHEDULE_MAP):
+    if not base_validator.is_empty(jr) and not is_known_value(jr, WORK_SCHEDULES, WORK_SCHEDULE_MAP):
         warnings.append(
             {
                 "fila": index,
@@ -63,7 +63,7 @@ def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str
         )
 
     cat = row.get("categoría_laboral")
-    if not base_validator.is_empty(cat) and not _is_known_value(cat, JOB_CATEGORIES, JOB_CATEGORY_MAP):
+    if not base_validator.is_empty(cat) and not is_known_value(cat, JOB_CATEGORIES, JOB_CATEGORY_MAP):
         warnings.append(
             {
                 "fila": index,
@@ -74,7 +74,7 @@ def validate(row: dict, index: int) -> Tuple[List[Dict[str, Any]], List[Dict[str
         )
 
     sexo = row.get("sexo")
-    if not base_validator.is_empty(sexo) and not _is_known_value(sexo, SEX, SEX_MAP):
+    if not base_validator.is_empty(sexo) and not is_known_value(sexo, SEX, SEX_MAP):
         warnings.append(
             {
                 "fila": index,

@@ -9,18 +9,18 @@ from quyca.repositories import search_work_filters_repository
 
 
 def get_works_by_person(person_id: str, query_params: QueryParams, pipeline_params: dict) -> Generator:
-    return _get_export_works({"authors.id": person_id}, query_params, pipeline_params)
+    return get_export_works({"authors.id": person_id}, query_params, pipeline_params)
 
 
 def get_works_by_affiliation(affiliation_id: str, query_params: QueryParams, pipeline_params: dict) -> Generator:
-    return _get_export_works({"authors.affiliations.id": affiliation_id}, query_params, pipeline_params)
+    return get_export_works({"authors.affiliations.id": affiliation_id}, query_params, pipeline_params)
 
 
 def get_works_by_source(source_id: str, query_params: QueryParams, pipeline_params: dict) -> Generator:
-    return _get_export_works({"source.id": base_repository.to_object_id(source_id)}, query_params, pipeline_params)
+    return get_export_works({"source.id": base_repository.to_object_id(source_id)}, query_params, pipeline_params)
 
 
-def _get_export_works(match: dict, query_params: QueryParams, pipeline_params: dict) -> Generator:
+def get_export_works(match: dict, query_params: QueryParams, pipeline_params: dict) -> Generator:
     pipeline: list[dict] = [{"$match": match}]
     search_work_filters_repository.set_authors_filter_if_large(pipeline)
     search_work_filters_repository.set_product_filters(pipeline, query_params)

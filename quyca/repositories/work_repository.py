@@ -30,14 +30,14 @@ def get_work_by_doi(work_doi: str, pipeline_params: dict | None = None) -> Gener
     return work_generator.get(cursor)
 
 
-def _works_match(match: dict, query_params: QueryParams) -> list[dict]:
+def works_match(match: dict, query_params: QueryParams) -> list[dict]:
     """Shared by the page, its count and its filters, so the three always describe the same works."""
     pipeline = [{"$match": match}]
     set_product_filters(pipeline, query_params)
     return pipeline
 
 
-def _get_works(match_stages: list[dict], query_params: QueryParams, pipeline_params: dict | None = None) -> Generator:
+def get_works(match_stages: list[dict], query_params: QueryParams, pipeline_params: dict | None = None) -> Generator:
     pipeline = base_repository.set_search_end_stages(match_stages, query_params, pipeline_params)
     return work_generator.get(database["works"].aggregate(pipeline))
 
@@ -45,36 +45,36 @@ def _get_works(match_stages: list[dict], query_params: QueryParams, pipeline_par
 def get_works_by_affiliation(
     affiliation_id: str, query_params: QueryParams, pipeline_params: dict | None = None
 ) -> Generator:
-    return _get_works(
-        _works_match({"authors.affiliations.id": affiliation_id}, query_params), query_params, pipeline_params
+    return get_works(
+        works_match({"authors.affiliations.id": affiliation_id}, query_params), query_params, pipeline_params
     )
 
 
 def get_works_count_by_affiliation(affiliation_id: str, query_params: QueryParams) -> int:
     return base_repository.count(
-        database["works"], _works_match({"authors.affiliations.id": affiliation_id}, query_params)
+        database["works"], works_match({"authors.affiliations.id": affiliation_id}, query_params)
     )
 
 
 def get_works_available_filters_by_affiliation(affiliation_id: str, query_params: QueryParams) -> dict:
-    return compute_works_available_filters(_works_match({"authors.affiliations.id": affiliation_id}, query_params))
+    return compute_works_available_filters(works_match({"authors.affiliations.id": affiliation_id}, query_params))
 
 
 def get_works_by_person(person_id: str, query_params: QueryParams, pipeline_params: dict | None = None) -> Generator:
-    return _get_works(_works_match({"authors.id": person_id}, query_params), query_params, pipeline_params)
+    return get_works(works_match({"authors.id": person_id}, query_params), query_params, pipeline_params)
 
 
 def get_works_count_by_person(person_id: str, query_params: QueryParams) -> int:
-    return base_repository.count(database["works"], _works_match({"authors.id": person_id}, query_params))
+    return base_repository.count(database["works"], works_match({"authors.id": person_id}, query_params))
 
 
 def get_works_available_filters_by_person(person_id: str, query_params: QueryParams) -> dict:
-    return compute_works_available_filters(_works_match({"authors.id": person_id}, query_params))
+    return compute_works_available_filters(works_match({"authors.id": person_id}, query_params))
 
 
 def get_works_by_source(source_id: str, query_params: QueryParams, pipeline_params: dict | None = None) -> Generator:
-    return _get_works(
-        _works_match({"source.id": base_repository.to_object_id(source_id)}, query_params),
+    return get_works(
+        works_match({"source.id": base_repository.to_object_id(source_id)}, query_params),
         query_params,
         pipeline_params,
     )
@@ -82,13 +82,13 @@ def get_works_by_source(source_id: str, query_params: QueryParams, pipeline_para
 
 def get_works_count_by_source(source_id: str, query_params: QueryParams) -> int:
     return base_repository.count(
-        database["works"], _works_match({"source.id": base_repository.to_object_id(source_id)}, query_params)
+        database["works"], works_match({"source.id": base_repository.to_object_id(source_id)}, query_params)
     )
 
 
 def get_works_available_filters_by_source(source_id: str, query_params: QueryParams) -> dict:
     return compute_works_available_filters(
-        _works_match({"source.id": base_repository.to_object_id(source_id)}, query_params)
+        works_match({"source.id": base_repository.to_object_id(source_id)}, query_params)
     )
 
 
@@ -96,12 +96,12 @@ def get_works_by_geo(
     geo_type: str, geo_id: str, query_params: QueryParams, pipeline_params: dict | None = None
 ) -> Generator:
     match = geo_repository.build_works_geo_match(geo_type, geo_id)
-    return _get_works(_works_match(match, query_params), query_params, pipeline_params)
+    return get_works(works_match(match, query_params), query_params, pipeline_params)
 
 
 def get_works_count_by_geo(geo_type: str, geo_id: str, query_params: QueryParams) -> int:
     match = geo_repository.build_works_geo_match(geo_type, geo_id)
-    return base_repository.count(database["works"], _works_match(match, query_params))
+    return base_repository.count(database["works"], works_match(match, query_params))
 
 
 def set_issn_to_pipeline(pipeline: list) -> None:

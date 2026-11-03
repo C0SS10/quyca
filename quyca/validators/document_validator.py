@@ -6,18 +6,18 @@ from quyca.constants.staff_field_values import DOCUMENT_TYPES
 
 PASSPORT_RE = re.compile(r"^[A-Za-z0-9]+$")
 
-_NUMERIC_ID_TYPES = {"cédula de ciudadanía", "cédula de extranjería"}
+NUMERIC_ID_TYPES = {"cédula de ciudadanía", "cédula de extranjería"}
 
-_INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
+INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
 
 
-def _is_numeric_identification(value: Any) -> bool:
+def is_numeric_identification(value: Any) -> bool:
     """Accept integer-like values even when Excel stored them as text or float strings."""
     if base_validator.is_empty(value):
         return False
 
     normalized = unicodedata.normalize("NFKC", str(value)).strip()
-    return bool(_INTEGER_TEXT_RE.match(normalized))
+    return bool(INTEGER_TEXT_RE.match(normalized))
 
 
 def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[str, Any]]:
@@ -39,7 +39,7 @@ def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[
         if not base_validator.is_empty(identificacion):
             id_str = str(identificacion).strip()
 
-            if tnorm in _NUMERIC_ID_TYPES and not _is_numeric_identification(identificacion):
+            if tnorm in NUMERIC_ID_TYPES and not is_numeric_identification(identificacion):
                 errors.append(
                     {
                         "fila": index,

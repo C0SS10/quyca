@@ -47,7 +47,7 @@ def handle_scienti_upload(
 
     filename = file.filename
 
-    if not _is_compressed_file(filename):
+    if not is_compressed_file(filename):
         return {
             "success": False,
             "msg": "Tipo de archivo no permitido. Los formatos soportados son: .zip, .rar, .7z, .tar, .gz, .tgz, .bz2, .tar.gz y .tar.bz2.",
@@ -88,7 +88,7 @@ def handle_scienti_upload(
     }, 200
 
 
-def _is_compressed_file(filename: str) -> bool:
+def is_compressed_file(filename: str) -> bool:
     """Checks if the file has an allowed compressed extension."""
     filename_lower = filename.lower()
     for ext in ALLOWED_COMPRESSED_EXTENSIONS:

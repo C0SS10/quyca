@@ -26,9 +26,9 @@ def create_user(
     if raw_payload is None:
         raise InvalidParamException("Payload requerido: institution, ror_id y role.")
 
-    _validate_create_user_payload(raw_payload)
+    validate_create_user_payload(raw_payload)
     email, institution, ror_id, role = email.strip().lower(), institution.strip(), ror_id.strip(), role.strip()
-    _validate_email(email)
+    validate_email(email)
 
     if role.lower() == "admin":
         raise ForbiddenException("No se pueden crear usuarios con el role 'admin'.")
@@ -43,7 +43,7 @@ def create_user(
     if user_repository.get_user_by_email(email):
         raise ConflictException(f"El usuario con correo {email} ya existe.")
 
-    raw_password = _generate_password()
+    raw_password = generate_password()
     hashe_password = hash_password(raw_password)
 
     user = User(
@@ -58,7 +58,7 @@ def create_user(
 
     subject = "Tu cuenta en la plataforma ImpactU ha sido creada exitosamente."
 
-    _ensure_email_sent(
+    ensure_email_sent(
         notification_service.send_custom_email(subject, role, institution, email, raw_password, ror_id=ror_id)
     )
 
@@ -103,12 +103,12 @@ def update_password(email: str) -> dict[str, Any]:
     if not user.is_active:
         raise ForbiddenException(f"Cuenta desactivada para el usuario {email}")
 
-    new_password = _generate_password()
+    new_password = generate_password()
     hashed = hash_password(new_password)
 
     subject = "Tu contraseña ha sido restablecida"
 
-    _ensure_email_sent(
+    ensure_email_sent(
         notification_service.send_email_change_password(
             email=email, subject=subject, password=new_password, institution=user.institution, ror_id=user.id
         )
@@ -121,7 +121,7 @@ def update_password(email: str) -> dict[str, Any]:
 
 def update_user_info(old_email: str, new_email: str, new_role: str, raw_payload: dict[str, Any]) -> dict[str, Any]:
     """Edits email and/or role, blocks admin role and admin account edits, and reissues credentials on email change."""
-    _validate_edit_user_payload(raw_payload)
+    validate_edit_user_payload(raw_payload)
 
     if new_role and new_role.strip().lower() == "admin":
         raise ForbiddenException("No se puede asignar el rol 'admin' a un usuario.")
@@ -147,16 +147,16 @@ def update_user_info(old_email: str, new_email: str, new_role: str, raw_payload:
             raise NotEntityException(f"Usuario con correo {old_email} no encontrado.")
         return {"success": True, "msg": f"Rol del usuario {old_email} actualizado correctamente."}
 
-    _validate_email(new_email)
+    validate_email(new_email)
     if user_repository.get_user_by_email(new_email):
         raise ConflictException(f"Ya existe un usuario con el correo {new_email}")
 
-    new_password = _generate_password()
+    new_password = generate_password()
     hashed = hash_password(new_password)
 
     # The email goes first: if it fails, the user keeps the old email and password.
     subject = "Tu cuenta en la plataforma ImpactU ha sido creada exitosamente."
-    _ensure_email_sent(
+    ensure_email_sent(
         notification_service.send_custom_email(
             subject=subject,
             role=new_role or current.role,
@@ -183,16 +183,16 @@ def update_user_info(old_email: str, new_email: str, new_role: str, raw_payload:
 
 def regenerate_apikey(email: str, expires: int | None) -> dict[str, Any]:
     """Generates a new API key for the user, after validating expiration rules, and stores it."""
-    _validate_apikey_expiration(expires)
+    validate_apikey_expiration(expires)
 
-    new_key = {"id": _generate_apikey_id(), "expires": expires}
+    new_key = {"id": generate_apikey_id(), "expires": expires}
     user_repository.regenerate_apikey(email, new_key)
     return {"success": True, "apikey": new_key}
 
 
 def update_apikey_expiration(email: str, expires: int | None) -> dict[str, Any]:
     """Updates the expiration timestamp of the user's API key after validating it."""
-    _validate_apikey_expiration(expires)
+    validate_apikey_expiration(expires)
 
     user_repository.update_apikey_expiration(email, expires)
     return {"success": True, "msg": "Expiración del API key actualizada"}
@@ -204,30 +204,30 @@ def delete_apikey(email: str) -> dict[str, Any]:
     return {"success": True, "msg": "API key eliminada correctamente"}
 
 
-def _generate_password(length: int = 10) -> str:
+def generate_password(length: int = 10) -> str:
     """Generates a random alphanumeric password."""
     characters = string.ascii_letters + string.digits
     return "".join(secrets.choice(characters) for _ in range(length))
 
 
-def _generate_apikey_id(length: int = 10) -> str:
+def generate_apikey_id(length: int = 10) -> str:
     """Generates a random API key identifier."""
     chars = string.ascii_letters + string.digits
     return "".join(secrets.choice(chars) for _ in range(length))
 
 
-def _ensure_email_sent(result: dict[str, Any]) -> None:
+def ensure_email_sent(result: dict[str, Any]) -> None:
     """Gmail answers its errors in the result instead of raising them."""
     if not result.get("success"):
         raise EmailDeliveryException("No se pudo enviar el correo con las credenciales. No se guardó ningún cambio.")
 
 
-def _validate_email(email: str) -> None:
+def validate_email(email: str) -> None:
     if not EMAIL_PATTERN.fullmatch(email):
         raise InvalidParamException(f"El correo '{email}' no es válido.")
 
 
-def _validate_create_user_payload(payload: dict[str, Any]) -> None:
+def validate_create_user_payload(payload: dict[str, Any]) -> None:
     """Validates required fields for user creation."""
     required = {"institution", "ror_id", "role"}
     received = set(payload.keys())
@@ -248,7 +248,7 @@ def _validate_create_user_payload(payload: dict[str, Any]) -> None:
         raise InvalidParamException("Deben ser texto no vacío: " + ", ".join(invalid))
 
 
-def _validate_edit_user_payload(payload: dict[str, Any]) -> None:
+def validate_edit_user_payload(payload: dict[str, Any]) -> None:
     """Validates fields allowed for user editing."""
     allowed = {"email", "role"}
     received = set(payload.keys())
@@ -262,7 +262,7 @@ def _validate_edit_user_payload(payload: dict[str, Any]) -> None:
         raise InvalidParamException("Sobran: " + ", ".join(sorted(extra)))
 
 
-def _validate_apikey_expiration(expires: int | None) -> None:
+def validate_apikey_expiration(expires: int | None) -> None:
     """Validates API key expiration timestamp."""
     if expires is None:
         return

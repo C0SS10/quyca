@@ -26,7 +26,7 @@ def iter_ring_points(geometry: dict[str, Any]) -> Iterator[Coordinate]:
                 yield float(point[0]), float(point[1])
 
 
-def _centroid(geometry: dict[str, Any]) -> Optional[Coordinate]:
+def get_centroid(geometry: dict[str, Any]) -> Optional[Coordinate]:
     points = list(iter_ring_points(geometry))
     if not points:
         return None
@@ -74,7 +74,7 @@ def get_country_centroids() -> dict[str, Coordinate]:
     centroids: dict[str, Coordinate] = {}
     for feature in worldmap["features"]:
         country_code = feature["properties"].get("country_code")
-        centroid = _centroid(feature["geometry"])
+        centroid = get_centroid(feature["geometry"])
         if country_code and centroid:
             centroids[country_code] = centroid
     return centroids
@@ -90,7 +90,7 @@ def get_colombian_department_centroids() -> dict[str, Coordinate]:
         department_name = feature["properties"]["NOMBRE_DPT"].capitalize()
         if "bogota" in department_name.lower():
             department_name = "Bogotá D.C."
-        centroid = _centroid(feature["geometry"])
+        centroid = get_centroid(feature["geometry"])
         if centroid:
             centroids[department_name] = centroid
     return centroids

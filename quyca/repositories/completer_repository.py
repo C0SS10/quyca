@@ -63,9 +63,9 @@ def get_affiliation_completions(affiliation_type: str, text: str) -> List[Dict[s
         if opt["_source"].get("full_name"):
             name = opt["_source"]["full_name"]
         else:
-            for _name in opt["_source"]["name"]["input"]:
-                if len(name) < len(_name):
-                    name = _name
+            for name in opt["_source"]["name"]["input"]:
+                if len(name) < len(name):
+                    name = name
         opt["name"] = name
 
     return options

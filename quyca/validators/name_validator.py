@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from quyca.validators import base_validator
 
 
-def _normalize_name(value: object) -> str:
+def normalize_name(value: object) -> str:
     """Normalize apostrophe-like characters and composed accents before validation."""
     return (
         unicodedata.normalize("NFC", str(value))
@@ -16,7 +16,7 @@ def _normalize_name(value: object) -> str:
     )
 
 
-def _is_valid_name(value: str) -> bool:
+def is_valid_name(value: str) -> bool:
     """Return True when the value only contains letters, marks, spaces, apostrophes or hyphens."""
     for char in value:
         if char in {"'", "-", " "}:
@@ -47,9 +47,9 @@ def validate(row: dict, index: int) -> List[Dict[str, Any]]:
         if base_validator.is_empty(value):
             continue
 
-        normalized_value = _normalize_name(value)
+        normalized_value = normalize_name(value)
 
-        if not _is_valid_name(normalized_value):
+        if not is_valid_name(normalized_value):
             errors.append(
                 {
                     "fila": index,
