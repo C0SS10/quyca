@@ -5,6 +5,10 @@ SCHEMA_VERSION = "1.0"
 LIST_SEPARATOR = ";"
 ALLOWED_EXTENSIONS = (".xlsx",)
 MAX_REPORTED_ISSUES = 500
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+# An .xlsx is a zip: this bounds what a small file can expand to in memory.
+MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
+MAX_PROJECT_ROWS = 20_000
 
 PROJECT_TYPE_ROYALTIES = "regalías"
 PROJECT_STATE_FINISHED = "finalizado"
@@ -56,4 +60,5 @@ def normalize_token(value: str) -> str:
 
 
 def normalize_header(value: str) -> str:
-    return normalize_token(value).replace(" ", "_")
+    # The format document marks the required columns with '*', and people copy the names with it.
+    return normalize_token(value.strip().rstrip("*")).replace(" ", "_")

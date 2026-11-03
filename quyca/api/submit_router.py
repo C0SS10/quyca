@@ -5,9 +5,11 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import get_jwt
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from quyca.api.helpers import register_error_handlers
 from quyca.api.permissions import get_session_email
+from quyca.constants.project_file_schema import MAX_UPLOAD_BYTES
 from quyca.exceptions import InvalidParamException, ProjectFileException
 from quyca.services import ciarp_service, scienti_service, staff_service, submit_project_file_service
 
@@ -21,6 +23,11 @@ UploadHandler = Callable[[FileStorage, dict[str, Any], str], tuple[dict, int]]
 def handle_project_file_error(error: ProjectFileException) -> tuple[Response, int]:
     # The project file validation answers {"error": ...}, like the validation report it returns on success.
     return jsonify({"error": str(error)}), 400
+
+
+@submit_router.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(error: RequestEntityTooLarge) -> tuple[Response, int]:
+    return jsonify({"error": f"El archivo supera el tamaño máximo de {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."}), 413
 
 
 @submit_router.route("/staff", methods=["POST"])
@@ -40,6 +47,9 @@ def submit_scienti() -> tuple[Response, int]:
 
 @submit_router.route("/project", methods=["POST"])
 def validate_project_file() -> Response:
+    # Set before the body is read, so an oversized upload is rejected without loading it.
+    request.max_content_length = MAX_UPLOAD_BYTES
+    get_session_email("Token inválido o expirado")
     file = request.files.get("file")
     if file is None or not file.filename:
         raise ProjectFileException("Debe enviar el archivo en el campo 'file' (multipart/form-data).")
