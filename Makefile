@@ -16,7 +16,7 @@ tests-integration-dev:
 tests-api-dev:
 	docker compose exec dev pytest tests/api
 coverage-dev:
-	docker compose exec -e COVERAGE_FILE=/tmp/.coverage dev sh -c "pytest --cov --cov-report= && pytest tests/api --cov --cov-append --cov-report=term"
+	docker compose exec -e COVERAGE_FILE=/tmp/.coverage dev sh -c "pytest --cov --cov-report= && pytest tests/api --cov --cov-append --cov-report=html"
 refresh-filters-dev:
 	docker compose exec dev python -m quyca.jobs.refresh_filters
 
