@@ -91,8 +91,9 @@ make logs-prod # follow the logs
 ## Running tests
 
 ```bash
-make tests-unit-dev     # unit tests: no network and no real database
-make tests-feature-dev  # integration tests: read-only against the dev database
+make tests-unit-dev         # unit tests: one module at a time, nothing real
+make tests-integration-dev  # integration tests: several components with fake infrastructure
+make tests-api-dev          # API tests: endpoints against the dev database, read-only
 make tests-dev          # both, in separate processes
 make coverage-dev       # both, with the combined coverage report
 ```

@@ -2,49 +2,77 @@
 
 Cómo están organizadas las pruebas de Quyca, qué las hace seguras y cómo escribir una nueva.
 
-## Las dos suites
+## La pirámide
 
-| | `tests/unit` | `tests/feature` |
-|---|---|---|
-| Qué prueba | Reglas de negocio y flujos HTTP completos | La API contra los datos reales de desarrollo |
-| Mongo | `mongomock`, en memoria y vacío en cada prueba | La base real de dev, **solo lectura** |
-| Red | Bloqueada | Mongo y Elasticsearch de dev |
-| Necesita la base de dev | No: puede correr en un CI | Sí |
-| Tiempo aproximado | 20 segundos | 3 minutos |
+Las pruebas siguen la pirámide de Mike Cohn: muchas pruebas pequeñas y rápidas abajo, pocas y completas arriba. La capa de una prueba la define **qué es real** en ella.
 
-Las dos no pueden correr en el mismo proceso, porque cada una necesita una configuración distinta. Si se mezclan (por ejemplo, `pytest tests`), pytest se detiene con un mensaje claro y código de salida 4. `pytest` a secas corre solo `tests/unit`.
+```
+tests/
+  support/        arnés aislado, fixtures y fábricas de Excel compartidas por unit e integration
+  unit/           una función o un módulo, sin infraestructura
+    clients/ files/ generators/ normalizers/ parsers/ repositories/ security/ services/ validators/
+  integration/    varias piezas juntas con infraestructura falsa (mongomock, disco temporal, Gmail y Drive falsos)
+    repositories/   repositorio + mongomock o disco
+    services/       servicio + repositorio
+    routes/         HTTP de punta a punta dentro de la app, con dobles para lo externo
+  api/            endpoints por HTTP contra Mongo y Elasticsearch reales de dev, en solo lectura
+    affiliations/ person/ work/ sources/ patent/ project/ geo/ search/
+```
+
+| | `unit` | `integration` | `api` |
+|---|---|---|---|
+| Qué es real | Solo el código bajo prueba | Nuestro código completo; la infraestructura es falsa | Todo: Mongo y Elasticsearch de dev |
+| Mongo | Ninguno (o un `MagicMock`) | `mongomock`, vacío en cada prueba | La base de dev, **solo lectura** |
+| Red | Bloqueada | Bloqueada | Mongo y Elasticsearch de dev |
+| Puede correr en un CI | Sí | Sí | No |
+| Tiempo aproximado | 10 segundos | 25 segundos | 2 minutos |
+
+### ¿Dónde va mi prueba?
+
+1. ¿Necesita datos reales de dev para tener sentido (una consulta, una agregación, una gráfica)? → `api/`, por HTTP.
+2. ¿Usa varias piezas a la vez: una ruta, un servicio con su repositorio, o un repositorio con `mongomock` o con disco? → `integration/`.
+3. Si no: una función o un módulo con sus colaboradores simulados → `unit/`, en la carpeta del módulo que prueba.
+
+Las pruebas de `api` no simulan capas internas: si una prueba de ruta necesita `patch` sobre un servicio o un repositorio, es de `integration/routes`.
+
+### Por qué hay dos ejecuciones
+
+`unit` e `integration` corren con una configuración falsa y `api` con la real, y el cliente de Mongo se crea al importar `quyca`. Por eso no pueden compartir un proceso: `pytest` a secas corre `unit` e `integration`, y `api` se corre aparte con `pytest tests/api`. Si se mezclan (por ejemplo, `pytest tests`), pytest se detiene antes de correr nada, con un mensaje que explica cómo correrlas.
 
 ## Comandos
 
 ```bash
-make tests-unit-dev     # solo las unitarias
-make tests-feature-dev  # solo las de integración
-make tests-dev          # las dos, por separado
-make coverage-dev       # las dos, con el reporte de cobertura combinado
+make tests-unit-dev         # unit
+make tests-integration-dev  # integration
+make tests-api-dev          # api, contra la base de dev
+make tests-dev              # las tres
+make coverage-dev           # las tres, con el reporte de cobertura combinado
 ```
 
 Las dependencias de prueba están en la imagen de Docker. Después de integrar un cambio en `pyproject.toml`, hay que reconstruirla con `make up-dev`.
 
 ## El arnés de seguridad
 
-Una prueba no puede dañar datos ni enviar nada, aunque esté mal escrita. Las protecciones están en los `conftest.py` de cada suite.
+Una prueba no puede dañar datos ni enviar nada, aunque esté mal escrita.
 
-### En `tests/unit` (`tests/unit/conftest.py`)
+### En `unit` e `integration` (`tests/support/isolated.py`)
+
+Los `conftest.py` de las dos carpetas cargan este módulo.
 
 1. **Configuración falsa.** Antes de importar `quyca`, se sobrescriben las variables de entorno y no se lee `.env.dev`. Los servidores apuntan a `unit-tests.invalid`, un dominio que por norma nunca existe.
 2. **Red bloqueada en todo el proceso.** `socket.connect`, `create_connection` y `getaddrinfo` lanzan `NetworkBlockedError`.
 3. **Sin credenciales de Google.** `GOOGLE_CREDENTIALS` apunta a un archivo que no existe.
 4. **Dobles explícitos.** Los fixtures `users` y `outbox` reemplazan a Mongo y a Gmail.
 
-### En `tests/feature` (`tests/feature/conftest.py`)
+### En `api` (`tests/api/conftest.py`)
 
-1. **Escrituras prohibidas.** Todos los métodos de escritura de `pymongo` y los `aggregate` con `$out` o `$merge` lanzan `ReadOnlyViolationError`. Si una prueba necesita una escritura, debe simularla con `patch`.
+1. **Escrituras prohibidas.** Todos los métodos de escritura de `pymongo` y los `aggregate` con `$out` o `$merge` lanzan `ReadOnlyViolationError`.
 2. **Sin Google ni Sentry.** Sin credenciales no se puede enviar correo ni subir a Drive, y los errores de prueba no llegan a Sentry.
-3. **Archivos fuera del proyecto.** `LOCAL_STORAGE_PATH` apunta a `/tmp/quyca-feature-tests`.
+3. **Archivos fuera del proyecto.** `LOCAL_STORAGE_PATH` apunta a `/tmp/quyca-api-tests`.
 
 Estas pruebas leen los datos de dev, así que su resultado depende de ellos. Los métodos de escritura de Elasticsearch no están bloqueados porque `quyca` no tiene ninguno: al agregar uno, hay que bloquearlo aquí.
 
-## Fixtures de `tests/unit`
+## Fixtures de `unit` e `integration` (`tests/support/isolated.py`)
 
 | Fixture | Para qué sirve |
 |---|---|
@@ -59,7 +87,7 @@ Estas pruebas leen los datos de dev, así que su resultado depende de ellos. Los
 
 ### Archivos de Excel para pruebas
 
-`tests/unit/project_files.py` construye archivos en memoria:
+`tests/support/project_files.py` construye archivos en memoria:
 
 - `make_xlsx(filas)`: un `.xlsx` con openpyxl. `VALID_PROJECT` es una fila válida del formato de proyectos.
 - `make_excel_style_xlsx(filas)`: un `.xlsx` con los textos en `xl/sharedStrings.xml`, **como los guarda Excel**. openpyxl guarda los textos dentro de la hoja, así que sin esta función esa parte del lector nunca se probaría.
@@ -122,7 +150,7 @@ Diferencia conocida: `{"$set": {"apikey.expires": 1}}` sobre `apikey: null` func
 
 ## Cobertura
 
-La meta del proyecto es 80-85 % con las dos suites combinadas (`make coverage-dev`). Si el CI vuelve a correr las pruebas, conviene que ejecute `pytest tests/unit --cov --cov-fail-under=<mínimo actual>` para que la cobertura no retroceda.
+La meta del proyecto es 80-85 % con las tres capas combinadas (`make coverage-dev`). Si el CI vuelve a correr las pruebas, conviene que ejecute `pytest --cov --cov-fail-under=<mínimo actual>` para que la cobertura no retroceda.
 
 La cobertura dice qué se ejecutó, no qué se verificó. Para medir la calidad de una tanda de pruebas, introduce errores a propósito en una copia desechable del código y comprueba que las pruebas fallan.
 
