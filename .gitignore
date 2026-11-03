@@ -138,3 +138,12 @@ storage/
 
 # Pickle
 token.pickle
+# B70: credentials and keys never versioned
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
