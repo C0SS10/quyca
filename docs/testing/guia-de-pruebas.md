@@ -9,7 +9,7 @@ Cómo están organizadas las pruebas de Quyca, qué las hace seguras y cómo esc
 | Qué prueba | Reglas de negocio y flujos HTTP completos | La API contra los datos reales de desarrollo |
 | Mongo | `mongomock`, en memoria y vacío en cada prueba | La base real de dev, **solo lectura** |
 | Red | Bloqueada | Mongo y Elasticsearch de dev |
-| Corre en el CI | Sí | No, porque allá no hay base de datos |
+| Necesita la base de dev | No: puede correr en un CI | Sí |
 | Tiempo aproximado | 20 segundos | 3 minutos |
 
 Las dos no pueden correr en el mismo proceso, porque cada una necesita una configuración distinta. Si se mezclan (por ejemplo, `pytest tests`), pytest se detiene con un mensaje claro y código de salida 4. `pytest` a secas corre solo `tests/unit`.
@@ -52,8 +52,18 @@ Estas pruebas leen los datos de dev, así que su resultado depende de ellos. Los
 | `seed_user(email, password, **campos)` | Guarda un usuario con su hash real y devuelve el documento |
 | `outbox` | Captura los correos. `outbox.last_password` da la contraseña enviada; `outbox.response` y `outbox.error` simulan fallos de Gmail |
 | `app`, `client` | La aplicación real con la configuración de producción: cookies seguras y CSRF activo |
+| `as_user`, `as_admin` | Cliente con la sesión iniciada de un usuario de institución o de un administrador |
+| `sign_in(client, email, password)`, `csrf_headers(client)` | Inician sesión y dan el encabezado CSRF que exigen las peticiones que modifican algo |
 | `frozen_time` | Fija el reloj de `user_service` para probar límites de expiración |
 | `fast_bcrypt` (automático) | Baja el costo de bcrypt para que las pruebas sean rápidas. `@pytest.mark.real_bcrypt` usa el de producción |
+
+### Archivos de Excel para pruebas
+
+`tests/unit/project_files.py` construye archivos en memoria:
+
+- `make_xlsx(filas)`: un `.xlsx` con openpyxl. `VALID_PROJECT` es una fila válida del formato de proyectos.
+- `make_excel_style_xlsx(filas)`: un `.xlsx` con los textos en `xl/sharedStrings.xml`, **como los guarda Excel**. openpyxl guarda los textos dentro de la hoja, así que sin esta función esa parte del lector nunca se probaría.
+- `rewrite_member(xlsx, archivo_interno, cambio)`: daña o altera un archivo interno del `.xlsx` para probar archivos corruptos o maliciosos.
 
 ## Cómo escribir una prueba
 
@@ -112,7 +122,7 @@ Diferencia conocida: `{"$set": {"apikey.expires": 1}}` sobre `apikey: null` func
 
 ## Cobertura
 
-La meta del proyecto es 80-85 % con las dos suites combinadas. El CI solo corre `tests/unit` y exige un mínimo con `--cov-fail-under` en `.github/workflows/pipeline.yml`: súbelo cada vez que agregues pruebas, para que la cobertura no retroceda.
+La meta del proyecto es 80-85 % con las dos suites combinadas (`make coverage-dev`). Si el CI vuelve a correr las pruebas, conviene que ejecute `pytest tests/unit --cov --cov-fail-under=<mínimo actual>` para que la cobertura no retroceda.
 
 La cobertura dice qué se ejecutó, no qué se verificó. Para medir la calidad de una tanda de pruebas, introduce errores a propósito en una copia desechable del código y comprueba que las pruebas fallan.
 

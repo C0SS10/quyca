@@ -144,6 +144,7 @@ http://colav.udea.edu.co/
 ## Business Rules
 
 - Staff validation and normalization: docs/business-rules/staff-validation-normalization.md
+- Project file validation: docs/business-rules/project-file-validation.md
 
 ## Testing
 
