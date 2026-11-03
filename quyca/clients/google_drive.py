@@ -18,8 +18,9 @@ def get_service() -> Any:
     if not os.path.exists(credentials_path):
         raise FileNotFoundError(f"No se encontró el archivo {credentials_path }")
 
+    # The token is the server's own file (GOOGLE_CREDENTIALS), never user input.
     with open(credentials_path, "rb") as f:
-        creds = pickle.load(f)
+        creds = pickle.load(f)  # nosec B301
 
     if getattr(creds, "expired", False) and getattr(creds, "refresh_token", None):
         creds.refresh(Request())
