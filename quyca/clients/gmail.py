@@ -181,9 +181,6 @@ def send_labeled_email(
     service = _get_service()
     result = _send_email(service, to_email, subject, body_html, attachments)
 
-    if not result.get("success"):
-        return result
-
     message_id = result.get("id")
     if not isinstance(message_id, str):
         return result
