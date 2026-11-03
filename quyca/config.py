@@ -25,11 +25,9 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: Literal["dev", "prod"] = "dev"
 
-    APP_NAME: str = "quyca"
     APP_VERSION: str = "0.1.0"
     APP_DEBUG: bool = False
     APP_PORT: int = 8080
-    APP_DOMAIN: str = ""
 
     API_URL_PREFIX: str = ""
     CORS_ORIGINS: list[str] = ["http://localhost:3000", r"https?://(.*\.)?impactu\.colav\.co$"]
