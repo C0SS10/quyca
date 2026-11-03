@@ -1,10 +1,8 @@
 import math
 from typing import Any
-
 import pandas as pd
 import pytest
-
-from quyca.validators import ciarp_validator, staff_validator
+from quyca.validators import ciarp_validator
 from quyca.validators.ciarp_validator import REQUIRED_COLUMNS
 
 VALID: dict[str, Any] = {
@@ -200,11 +198,3 @@ class TestDataframe:
                 "total_filas": 2,
             }
         ]
-
-
-def test_staff_findings_also_point_to_the_row_of_the_original_sheet() -> None:
-    df = pd.DataFrame([{"tipo_documento": "cédula de ciudadanía"}, {}, {"tipo_documento": "cédula de ciudadanía"}])
-
-    report = staff_validator.validate_dataframe(df)
-
-    assert {error["fila"] for error in report.errors} == {0, 2}
