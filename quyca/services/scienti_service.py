@@ -1,7 +1,9 @@
+import os
 from typing import Any, Dict, Tuple
 
 from werkzeug.datastructures import FileStorage
 
+from quyca.security import jwt_token_service
 from quyca.services import notification_service
 from quyca.repositories import file_repository
 
@@ -24,20 +26,10 @@ def handle_scienti_upload(
     upload_date: str,
 ) -> Tuple[Dict[str, Any], int]:
     """Validates, stores and notifies a SCIENTI compressed file upload."""
-    email = claims.get("sub")
-    ror_id = claims.get("_id")
-    institution = claims.get("institution")
-    role = claims.get("role")
-
-    if not (
-        isinstance(email, str)
-        and isinstance(ror_id, str)
-        and isinstance(institution, str)
-        and email.strip()
-        and ror_id.strip()
-        and institution.strip()
-    ):
+    upload_claims = jwt_token_service.get_upload_claims(claims)
+    if upload_claims is None:
         return {"success": False, "msg": "Token inválido o información incompleta"}, 401
+    email, ror_id, institution, role = upload_claims
 
     if file is None or not isinstance(file, FileStorage):
         return {"success": False, "msg": "Archivo requerido"}, 400
@@ -53,6 +45,9 @@ def handle_scienti_upload(
             "msg": "Tipo de archivo no permitido. Los formatos soportados son: .zip, .rar, .7z, .tar, .gz, .tgz, .bz2, .tar.gz y .tar.bz2.",
         }, 415
 
+    file.stream.seek(0, os.SEEK_END)
+    if file.stream.tell() == 0:
+        return {"success": False, "msg": "El archivo cargado está vacío. Verifique que contenga información."}, 400
     file.stream.seek(0)
 
     save_result = file_repository.save_file(file=file, ror_id=ror_id, institution=institution, file_type="scienti")
@@ -66,7 +61,7 @@ def handle_scienti_upload(
 
     # Only after saving: the email tells the user the file was received.
     notify_result = notification_service.send_scienti_compressed_received(
-        role=str(role),
+        role=role,
         institution=institution,
         filename=filename,
         upload_date=upload_date,

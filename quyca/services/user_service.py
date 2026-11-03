@@ -44,12 +44,12 @@ def create_user(
         raise ConflictException(f"El usuario con correo {email} ya existe.")
 
     raw_password = _generate_password()
-    hashe_password = hash_password(raw_password)
+    hashed_password = hash_password(raw_password)
 
     user = User(
         id=ror_id,
         email=email,
-        password=hashe_password,
+        password=hashed_password,
         institution=institution,
         role=role,
         is_active=True,

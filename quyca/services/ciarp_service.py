@@ -94,6 +94,9 @@ def process_ciarp_file(
             "pdf_base64": pdf_base64,
         }
 
+    if df.dropna(how="all").empty:
+        return {"success": False, "msg": "El archivo cargado está vacío. Verifique que contenga información."}
+
     report, attachments = generate_ciarp_report(df, institution, filename, upload_date, user)
 
     notification_service.send_report(
