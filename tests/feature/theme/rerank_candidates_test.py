@@ -36,11 +36,12 @@ def test_candidates_phase_one_returns_rank_and_availability(client: FlaskClient,
 
 def test_rerank_reorders_without_exposing_the_reranker_score(client: FlaskClient, monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(theme_service.theme_repository, "get_topics_with_cosine", lambda seed, ids: _topics(3))
-    monkeypatch.setattr(theme_service.reranker, "rerank", lambda seed, docs, started_at: ["3", "1", "2"])
+    monkeypatch.setattr(theme_service.reranker, "rerank", lambda seed, docs, started_at: (["3", "1", "2"], True))
 
     response = client.post("/app/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2", "3"]})
 
     assert response.status_code == 200
+    assert response.get_json()["seed_truncated"] is True
     data = response.get_json()["data"]
     assert [(c["topic_id"], c["rank"], c["cosine_rank"]) for c in data] == [("3", 1, 3), ("1", 2, 1), ("2", 3, 2)]
     assert all("score" not in c and "reranker_score" not in c for c in data)

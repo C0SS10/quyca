@@ -16,8 +16,9 @@ def is_available() -> bool:
         return False
 
 
-def rerank(seed_text: str, documents: list[dict], started_at: float) -> list[str]:
-    """Sends the seed and the documents ({"topic_id", "text"}) to the reranker service and returns the topic ids from best to worst.
+def rerank(seed_text: str, documents: list[dict], started_at: float) -> tuple[list[str], bool]:
+    """Sends the seed and the documents ({"topic_id", "text"}) to the reranker service and returns the topic ids from best to worst,
+    plus whether the service had to cut the seed to fit its context (`seed_truncated`).
 
     The service keeps a FIFO queue, so the call may wait for earlier requests; the whole petition (queue included) is limited to
     RERANKER_TIMEOUT_S seconds counted from `started_at` (time.monotonic()). The score of the reranker is not returned (D-090).
@@ -34,6 +35,7 @@ def rerank(seed_text: str, documents: list[dict], started_at: float) -> list[str
             timeout=remaining + 2,
         )
         resp.raise_for_status()
-        return [str(item["topic_id"]) for item in resp.json()["results"]]
+        body = resp.json()
+        return [str(item["topic_id"]) for item in body["results"]], bool(body.get("seed_truncated", False))
     except (requests.RequestException, KeyError, ValueError) as e:
         raise RerankerUnavailableException(str(e))

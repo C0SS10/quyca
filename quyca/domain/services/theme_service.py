@@ -39,7 +39,7 @@ def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
         raise ValueError(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=missing[0]))
     cosine_rank = {t: i for i, t in enumerate(topic_ids, start=1)}
     documents = [{"topic_id": t.topic_id, "text": f"{t.name}. {t.keywords}. {t.summary}"} for t in topics]
-    order = reranker.rerank(seed_text, documents, started_at)
+    order, seed_truncated = reranker.rerank(seed_text, documents, started_at)
     by_id = {t.topic_id: t for t in topics}
     if sorted(order) != sorted(by_id):
         raise RerankerUnavailableException("The reranker returned an unexpected list of topics.")
@@ -48,7 +48,7 @@ def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
         topic = by_id[topic_id]
         topic.rank, topic.cosine_rank = position, cosine_rank[topic_id]
         result.append(topic.model_dump())
-    return {"data": result, "total_results": len(result)}
+    return {"data": result, "total_results": len(result), "seed_truncated": seed_truncated}
 
 
 def search_topics(query_text: str, limit: int = 50) -> dict:
