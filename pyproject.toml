@@ -35,6 +35,7 @@ black = "^23.1.0"
 autoflake = "^2.3.1"
 mypy = "^1.18.2"
 pre-commit = "^4.3.0"
+types-requests = "^2.33.0.20261030"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"
