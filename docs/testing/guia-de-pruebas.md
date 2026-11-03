@@ -51,7 +51,7 @@ Estas pruebas leen los datos de dev, así que su resultado depende de ellos. Los
 | `users` | Colección `users` en memoria, conectada al repositorio real |
 | `seed_user(email, password, **campos)` | Guarda un usuario con su hash real y devuelve el documento |
 | `outbox` | Captura los correos. `outbox.last_password` da la contraseña enviada; `outbox.response` y `outbox.error` simulan fallos de Gmail |
-| `app`, `client` | La aplicación real con la configuración de producción: cookies seguras y CSRF activo |
+| `app`, `client` | La aplicación real con la configuración de producción: cookies seguras y CSRF activo. Lo que guarda en disco (`LOCAL_STORAGE_PATH`) cae en la carpeta temporal de la prueba |
 | `as_user`, `as_admin` | Cliente con la sesión iniciada de un usuario de institución o de un administrador |
 | `sign_in(client, email, password)`, `csrf_headers(client)` | Inician sesión y dan el encabezado CSRF que exigen las peticiones que modifican algo |
 | `frozen_time` | Fija el reloj de `user_service` para probar límites de expiración |
@@ -68,7 +68,7 @@ Estas pruebas leen los datos de dev, así que su resultado depende de ellos. Los
 ## Cómo escribir una prueba
 
 - **Verifica el resultado, no solo el código HTTP.** Revisa lo que quedó guardado, lo que se envió y que nada cambió cuando la operación se rechaza.
-- **Usa las piezas reales.** Solo se reemplaza lo que sale del proceso (Mongo, Gmail, Drive). Simular el servicio dentro de la prueba del router deja la lógica sin ejecutar: por eso `user_service` tenía 14 % de cobertura.
+- **Usa las piezas reales.** Solo se reemplaza lo que sale del proceso (Mongo, Gmail, Drive). Para Gmail y Drive se simula el servicio de Google (`MagicMock`), no nuestras funciones, así se prueba la lógica de carpetas, etiquetas y errores. Simular el servicio dentro de la prueba del router deja la lógica sin ejecutar: por eso `user_service` tenía 14 % de cobertura.
 - **Prueba los límites.** Vacío, `None`, tipo incorrecto, exactamente en el límite y un segundo antes.
 - **Prueba los permisos ruta por ruta.** Sin sesión, con otro rol y sin token CSRF.
 - **Escribe en inglés el nombre de la prueba y en español los comentarios y los `id` de los casos.**
@@ -132,3 +132,11 @@ La cobertura dice qué se ejecutó, no qué se verificó. Para medir la calidad 
 - **Las credenciales se generan con `secrets`**, nunca con `random`.
 - **Un token válido no basta.** Cada ruta protegida y `/me` consultan si la cuenta sigue activa, así que desactivar un usuario le quita el acceso de inmediato.
 - **Nadie se convierte en administrador por la API**, ni escribiendo el rol con mayúsculas o espacios.
+
+## Reglas de negocio que protegen las pruebas de cargas
+
+- **Las marcas del Excel de validación caen en la fila correcta**, aunque el archivo tenga filas en blanco en medio (CIARP y staff).
+- **Los colores del Excel de validación no cambian los datos.** Se aplican con formato condicional, así que las fechas siguen siendo fechas y los colores acompañan a la fila si el usuario la ordena.
+- **Scienti confirma la recepción solo después de guardar el archivo.** Si el guardado falla, no se envía el correo de "recibido".
+- **El texto que viene del archivo o de la sesión se muestra en el PDF como texto**, nunca se interpreta como HTML.
+- **Un apóstrofe en el nombre de la institución no rompe la búsqueda de carpetas en Drive**, y un `ror_id` con `/` no rompe el guardado local.
