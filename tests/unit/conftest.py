@@ -13,6 +13,7 @@ import re
 import socket
 import sys
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from typing import Any, NoReturn
 
 import pytest
@@ -176,10 +177,14 @@ def seed_user(users: mongomock.Collection) -> SeedUser:
 
 
 @pytest.fixture()
-def app() -> Flask:
-    """La aplicación real con la configuración de producción: cookies seguras y CSRF activo."""
+def app(tmp_path: Path) -> Flask:
+    """La aplicación real con la configuración de producción: cookies seguras y CSRF activo.
+
+    Lo que la app guarda en disco cae en una carpeta temporal de cada prueba.
+    """
     application = create_app()
     application.config["TESTING"] = True
+    application.config["LOCAL_STORAGE_PATH"] = str(tmp_path / "storage")
     return application
 
 
