@@ -141,7 +141,8 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
 
-    df = df.dropna(how="all").reset_index(drop=True)
+    # Keep the sheet's row labels: findings must point to the row the user sees, even after blank rows.
+    df = df.dropna(how="all")
     df = df.map(lambda v: v.strip() if isinstance(v, str) else v)
     df = df.apply(lambda x: str(int(x)) if isinstance(x, float) and x.is_integer() else x)
 
