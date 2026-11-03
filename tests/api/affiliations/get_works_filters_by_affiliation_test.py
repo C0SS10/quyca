@@ -1,5 +1,4 @@
 from quyca.clients.mongo import database
-from unittest.mock import patch
 
 ENDPOINT = "/affiliation"
 
@@ -42,13 +41,3 @@ def test_get_works_by_group(client):
     )
     response = client.get(f"{ENDPOINT}/group/{random_group_id}/research/products/filters")
     assert response.status_code == 200
-
-
-@patch("quyca.services.work_service.get_works_filters_by_affiliation")
-def test_get_affiliation_research_products_filters_returns_500_on_unexpected_error(mock_service, client):
-    mock_service.side_effect = Exception("boom")
-
-    response = client.get(f"{ENDPOINT}/institution/123/research/products/filters")
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Internal server error"}

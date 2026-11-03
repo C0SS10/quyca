@@ -1,5 +1,4 @@
 import pytest
-
 from quyca.clients.mongo import database
 
 random_work_id = str(database["works"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])

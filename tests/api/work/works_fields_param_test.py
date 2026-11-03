@@ -1,5 +1,4 @@
 import pytest
-
 from quyca.constants.summary_rules import WORK_SELECTABLE_FIELDS
 
 LISTINGS = [

@@ -1,9 +1,4 @@
-from unittest.mock import MagicMock
-
 import pytest
-
-from quyca.parsers import affiliation_parser
-from quyca.repositories import base_repository
 
 
 @pytest.mark.parametrize(
@@ -43,37 +38,3 @@ def test_search_geo_count_only_counts_its_type(client, geo_type):
     data = response.get_json()
     assert response.status_code == 200
     assert data["meta"]["count"] == len(data["data"])
-
-
-def test_count_without_filters_uses_collection_metadata():
-    collection = MagicMock()
-    collection.estimated_document_count.return_value = 42
-
-    assert base_repository.count(collection, []) == 42
-    collection.aggregate.assert_not_called()
-
-
-def test_count_with_filters_counts_matching_documents():
-    collection = MagicMock()
-    collection.aggregate.return_value = iter([{"total": 7}])
-    match = [{"$match": {"type": "city"}}]
-
-    assert base_repository.count(collection, match) == 7
-    collection.aggregate.assert_called_once_with([*match, {"$count": "total"}])
-    collection.estimated_document_count.assert_not_called()
-
-
-def test_count_with_filters_and_no_matches_is_zero():
-    collection = MagicMock()
-    collection.aggregate.return_value = iter([])
-
-    assert base_repository.count(collection, [{"$match": {"type": "nothing"}}]) == 0
-
-
-def test_location_filter_value_is_the_normalized_label_whatever_the_db_order():
-    mapping = {"Cartagena de Indias": "Cartagena"}
-    rows = [{"_id": "Cartagena de Indias", "count": 30}, {"_id": "Cartagena", "count": 7}]
-
-    for ordered_rows in (rows, rows[::-1]):
-        parsed = affiliation_parser.parse_affiliation_location_filter(ordered_rows, mapping)
-        assert parsed == [{"count": 37, "label": "Cartagena", "value": "Cartagena"}]

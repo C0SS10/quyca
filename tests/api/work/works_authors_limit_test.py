@@ -1,5 +1,4 @@
 import pytest
-
 from quyca.services.base_service import LISTING_AUTHORS_LIMIT, SUMMARY_AUTHORS_LIMIT
 
 LISTING = "/affiliation/institution/03bp5hc83/research/products?max=10&page=1"

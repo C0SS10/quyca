@@ -1,4 +1,4 @@
-"""Arnés de las pruebas de integración: leen la base real de dev, pero no pueden modificarla.
+"""Arnés de tests/api: los endpoints se prueban contra Mongo y Elasticsearch reales de dev, en solo lectura.
 
 Ver docs/testing/guia-de-pruebas.md.
 """
@@ -17,20 +17,19 @@ from pytest import fixture
 # Las variables reales del entorno ganan sobre .env.dev: sin credenciales no se puede enviar correo ni subir a Drive.
 os.environ.update(
     {
-        "GOOGLE_CREDENTIALS": "/nonexistent/quyca-feature-tests.json",
-        "LOCAL_STORAGE_PATH": "/tmp/quyca-feature-tests",
+        "GOOGLE_CREDENTIALS": "/nonexistent/quyca-api-tests.json",
+        "LOCAL_STORAGE_PATH": "/tmp/quyca-api-tests",
         "SENTRY_DSN": "",
     }
 )
 
 from quyca.app import create_app  # noqa: E402
 from quyca.config import settings  # noqa: E402
-from quyca.services import auth_service  # noqa: E402
 
 if ".invalid" in settings.MONGO_SERVER:
     pytest.exit(
-        "tests/feature necesita la configuración real, pero tests/unit ya cargó la falsa. "
-        "Usa `make tests-dev`, que los corre por separado, o `pytest tests/feature`.",
+        "tests/api necesita la configuración real, pero tests/unit o tests/integration ya cargaron la falsa. "
+        "Usa `make tests-dev`, que los corre por separado, o `pytest tests/api`.",
         returncode=pytest.ExitCode.USAGE_ERROR,
     )
 
@@ -40,7 +39,9 @@ class ReadOnlyViolationError(RuntimeError):
 
 
 def _deny_write(*args: Any, **kwargs: Any) -> NoReturn:
-    raise ReadOnlyViolationError("tests/feature es de solo lectura: simula esta escritura con `patch`.")
+    raise ReadOnlyViolationError(
+        "tests/api es de solo lectura: simula esta escritura con `patch` en una prueba de integration."
+    )
 
 
 WRITE_METHODS = {
@@ -83,27 +84,10 @@ def _read_only_aggregate(self: Collection, pipeline: list[dict], *args: Any, **k
 Collection.aggregate = _read_only_aggregate  # type: ignore[method-assign, assignment]
 
 
-@fixture(autouse=True)
-def active_session_user(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Estas pruebas firman tokens de usuarios que no existen en la base; la revalidación se prueba en tests/unit."""
-    monkeypatch.setattr(auth_service, "is_user_active", lambda email: True)
-
-
 @fixture()
 def app() -> Generator[Flask, None, None]:
     app = create_app()
-    app.config.update(
-        {
-            "TESTING": True,
-            "JWT_TOKEN_LOCATION": ["cookies"],
-            "JWT_ACCESS_COOKIE_NAME": "access_token_cookie",
-            "JWT_COOKIE_SECURE": False,
-            "JWT_COOKIE_SAMESITE": "Lax",
-            "JWT_COOKIE_DOMAIN": None,
-            "JWT_COOKIE_CSRF_PROTECT": False,
-            "JWT_CSRF_IN_COOKIES": False,
-        }
-    )
+    app.config["TESTING"] = True
 
     yield app
 

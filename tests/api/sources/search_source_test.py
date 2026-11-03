@@ -1,6 +1,5 @@
 import pytest
 from typing import List
-from unittest.mock import patch
 
 ENDPOINT = "/search/sources"
 
@@ -141,13 +140,3 @@ def test_search_sources_available_filters_with_params(client, query):
     assert response.status_code == 200
     data = response.get_json()
     assert isinstance(data, dict)
-
-
-@patch("quyca.services.search_service.search_sources_available_filters")
-def test_get_search_sources_filters_returns_500_on_error(mock_service, client):
-    mock_service.side_effect = Exception("boom")
-
-    response = client.get(f"{ENDPOINT}/filters")
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Internal server error"}

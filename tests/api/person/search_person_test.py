@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 ENDPOINT = "/search/person"
 
 
@@ -11,13 +9,3 @@ def test_search_person(client):
 def test_search_person_without_keywords(client):
     response = client.get(f"{ENDPOINT}?max=10&page=1&sort=products_desc")
     assert response.status_code == 200
-
-
-@patch("quyca.services.search_service.search_persons")
-def test_search_persons_returns_500_on_error(mock_service, client):
-    mock_service.side_effect = Exception("boom")
-
-    response = client.get(f"{ENDPOINT}")
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Internal server error"}

@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 ENDPOINT = "/search/works"
 
 
@@ -25,23 +23,3 @@ def test_search_works_without_keywords_with_filters(client) -> None:
         f"{ENDPOINT}?max=10&page=10&product_type=scholar_article,scienti_Publicado en revista especializada"
     )
     assert response.status_code == 200
-
-
-@patch("quyca.services.search_service.search_works_available_filters")
-def test_get_search_works_filters_returns_500_on_error(mock_service, client):
-    mock_service.side_effect = Exception("boom")
-
-    response = client.get(f"{ENDPOINT}/filters")
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Internal server error"}
-
-
-@patch("quyca.services.search_service.search_works")
-def test_search_works_returns_500_on_error(mock_service, client):
-    mock_service.side_effect = Exception("boom")
-
-    response = client.get(f"{ENDPOINT}")
-
-    assert response.status_code == 500
-    assert response.get_json() == {"error": "Internal server error"}
