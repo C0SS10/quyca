@@ -1,4 +1,4 @@
-"""Arnés de tests/api: los endpoints se prueban contra Mongo y Elasticsearch reales de dev, en solo lectura.
+"""Arnés de tests/api: los endpoints se prueban contra Mongo, Elasticsearch y ClickHouse reales de dev, en solo lectura.
 
 Ver docs/testing/guia-de-pruebas.md.
 """
@@ -7,6 +7,7 @@ import os
 from typing import Any, Generator, NoReturn
 
 import pytest
+from clickhouse_connect.driver.client import Client as ClickHouseClient
 from flask import Flask
 from flask.testing import FlaskClient
 from pymongo import MongoClient
@@ -66,6 +67,16 @@ WRITE_METHODS = {
     ),
     Database: ("drop_collection", "create_collection", "rename_collection"),
     MongoClient: ("drop_database",),
+    # `command` runs DDL and mutations; quyca only reads ClickHouse with `query`.
+    ClickHouseClient: (
+        "insert",
+        "insert_df",
+        "insert_arrow",
+        "insert_df_arrow",
+        "raw_insert",
+        "data_insert",
+        "command",
+    ),
 }
 for owner, method_names in WRITE_METHODS.items():
     for method_name in method_names:
