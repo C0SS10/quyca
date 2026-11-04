@@ -13,6 +13,7 @@ from quyca.api.project_router import project_router
 from quyca.api.search_router import search_router
 from quyca.api.source_router import source_router
 from quyca.api.submit_router import submit_router
+from quyca.api.theme_router import theme_router
 from quyca.api.user_auth_router import user_auth_router
 from quyca.api.user_crud_router import user_crud_router
 from quyca.api.work_router import work_router
@@ -34,6 +35,7 @@ router.register_blueprint(user_auth_router)
 router.register_blueprint(me_router)
 router.register_blueprint(user_crud_router)
 router.register_blueprint(submit_router, url_prefix="/submit")
+router.register_blueprint(theme_router, url_prefix="/theme")
 
 router.register_blueprint(info_router)
 router.register_blueprint(ping_router)

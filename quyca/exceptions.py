@@ -20,3 +20,7 @@ class ProjectFileException(Exception):
 
 class UnauthorizedException(Exception):
     """There is no valid session (missing or expired token, wrong credentials). Answered with HTTP 401."""
+
+
+class RerankerUnavailableException(Exception):
+    """The reranker service is off, does not answer or took longer than the allowed time (the theme route answers 503)."""
