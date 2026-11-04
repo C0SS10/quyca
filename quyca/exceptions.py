@@ -22,9 +22,9 @@ class ProjectFileException(Exception):
     """Archive of projects cannot be read (extension, unreadable content or without headers)."""
 
 
+class RerankerUnavailableException(Exception):
+    """The reranker of the topic curation tool is off, failed or took too long. HTTP 503."""
+
+
 class UnauthorizedException(Exception):
     """There is no valid session (missing or expired token, wrong credentials). Answered with HTTP 401."""
-
-
-class RerankerUnavailableException(Exception):
-    """The reranker service is off, does not answer or took longer than the allowed time (the theme route answers 503)."""
