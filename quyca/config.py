@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,17 +44,17 @@ class Settings(BaseSettings):
     CLICKHOUSE_SERVER: str = ""
     CLICKHOUSE_PORT: int = 8123
     CLICKHOUSE_USER: str = ""
-    CLICKHOUSE_PASSWORD: str = ""
+    CLICKHOUSE_PASSWORD: SecretStr = SecretStr("")
     CLICKHOUSE_DB: str = ""
 
-    # Embeddings for the candidate list (optional): without them only /candidates answers 503.
+    # Embeddings of the seed (optional): without them only the candidate routes answer 503.
     OLLAMA_URL: str = ""
     OLLAMA_MODEL: str = ""
-    # Layers of the embedding model on the GPU, sent in every Ollama call. Empty = let Ollama decide.
-    # On the 4 GB laptop the reranker is resident on the GPU, so a reduced value keeps both models working (B72).
-    OLLAMA_NUM_GPU: Optional[int] = None
+    # Layers of the embedding model on the GPU, sent in every call. Empty lets Ollama decide; a lower value leaves
+    # GPU memory for the reranker when both run on a small GPU.
+    OLLAMA_NUM_GPU: int | None = None
 
-    # Reranker service (Qwen3-Reranker-4B, separate process next to Ollama, D-097). Empty URL = phase 2 disabled.
+    # Reranker of the second phase of the candidate list, a separate service next to Ollama. Empty URL turns it off.
     RERANKER_URL: str = ""
     RERANKER_TIMEOUT_S: int = 60
 
