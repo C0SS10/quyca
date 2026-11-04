@@ -27,12 +27,15 @@ sentry-sdk = "^2.14.0"
 flask-compress = "^1.17"
 elasticsearch = "^8.17.0"
 bcrypt = "^5.0.0"
+clickhouse-connect = {version = "^1.8.0", python = ">=3.10,<3.15"}
+requests = "^2.34.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.10.1"
 autoflake = "^2.3.1"
 mypy = "^1.18.2"
 pre-commit = "^4.3.0"
+types-requests = "^2.33.0.20261030"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
