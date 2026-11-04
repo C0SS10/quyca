@@ -138,7 +138,7 @@ reports/
 
 # Pickle
 token.pickle
-# B70: credentials and keys never versioned
+# Credentials and keys
 .env
 .env.*
 !.env.example
