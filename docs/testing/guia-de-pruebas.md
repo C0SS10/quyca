@@ -59,14 +59,14 @@ Una prueba no puede dañar datos ni enviar nada, aunque esté mal escrita.
 
 Los `conftest.py` de las dos carpetas cargan este módulo.
 
-1. **Configuración falsa.** Antes de importar `quyca`, se sobrescriben las variables de entorno y no se lee `.env.dev`. Los servidores apuntan a `unit-tests.invalid`, un dominio que por norma nunca existe.
+1. **Configuración falsa.** Antes de importar `quyca`, se sobrescriben las variables de entorno y no se lee `.env.dev`. Los servidores apuntan a `unit-tests.invalid`, un dominio que por norma nunca existe. ClickHouse, Ollama y el reranker quedan sin configurar, así que las rutas de `/theme` responden 503 si la prueba no los configura con `monkeypatch`.
 2. **Red bloqueada en todo el proceso.** `socket.connect`, `create_connection` y `getaddrinfo` lanzan `NetworkBlockedError`.
 3. **Sin credenciales de Google.** `GOOGLE_CREDENTIALS` apunta a un archivo que no existe.
 4. **Dobles explícitos.** Los fixtures `users` y `outbox` reemplazan a Mongo y a Gmail.
 
 ### En `api` (`tests/api/conftest.py`)
 
-1. **Escrituras prohibidas.** Todos los métodos de escritura de `pymongo` y los `aggregate` con `$out` o `$merge` lanzan `ReadOnlyViolationError`.
+1. **Escrituras prohibidas.** Todos los métodos de escritura de `pymongo`, los `aggregate` con `$out` o `$merge` y los `insert` y `command` de ClickHouse lanzan `ReadOnlyViolationError`.
 2. **Sin Google ni Sentry.** Sin credenciales no se puede enviar correo ni subir a Drive, y los errores de prueba no llegan a Sentry.
 3. **Archivos fuera del proyecto.** `LOCAL_STORAGE_PATH` apunta a `/tmp/quyca-api-tests`.
 
