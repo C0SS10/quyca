@@ -22,7 +22,8 @@ def rerank(seed_text: str, documents: list[dict], started_at: float) -> tuple[li
 
     The service keeps a FIFO queue, so the call may wait for earlier requests; the whole petition (queue included) is limited to
     RERANKER_TIMEOUT_S seconds counted from `started_at` (time.monotonic()). The score of the reranker is not returned (D-090).
-    Raises RerankerUnavailableException when the service is off, fails or takes too long."""
+    Raises RerankerUnavailableException when the service is off, fails or takes too long.
+    """
     if not settings.RERANKER_URL:
         raise RerankerUnavailableException("RERANKER_URL is not configured.")
     remaining = settings.RERANKER_TIMEOUT_S - (time.monotonic() - started_at)
@@ -31,7 +32,11 @@ def rerank(seed_text: str, documents: list[dict], started_at: float) -> tuple[li
     try:
         resp = requests.post(
             f"{settings.RERANKER_URL}/rerank",
-            json={"seed_text": seed_text, "documents": documents, "timeout_s": remaining},
+            json={
+                "seed_text": seed_text,
+                "documents": documents,
+                "timeout_s": remaining,
+            },
             timeout=remaining + 2,
         )
         resp.raise_for_status()

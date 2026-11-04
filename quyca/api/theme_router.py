@@ -4,14 +4,38 @@ from typing import Tuple
 
 from flask import Blueprint, Response, jsonify, request
 from sentry_sdk import capture_exception
+from werkzeug.exceptions import BadRequest
 
+from quyca.api.helpers import register_error_handlers
 from quyca.config import settings
-from quyca.exceptions import NotEntityException, RerankerUnavailableException
+from quyca.exceptions import InvalidParamException, RerankerUnavailableException
 from quyca.services import theme_service
 
 theme_router = Blueprint("theme_router", __name__)
+register_error_handlers(theme_router)
 
-EMBEDDING_ROUTES = (".get_candidates", ".rerank_candidates")  # endpoint suffixes: blueprints are nested under "router."
+
+@theme_router.errorhandler(RerankerUnavailableException)
+def handle_reranker_unavailable(
+    error: RerankerUnavailableException,
+) -> Tuple[Response, int]:
+    """Phase 2 cannot run (service off, no answer or over the time limit): 503, and the interface keeps the cosine list."""
+    capture_exception(error)
+    return (
+        jsonify(
+            {
+                "error": "El servicio de reordenamiento no está disponible.",
+                "code": "reranker_unavailable",
+            }
+        ),
+        503,
+    )
+
+
+EMBEDDING_ROUTES = (
+    ".get_candidates",
+    ".rerank_candidates",
+)  # endpoint suffixes: blueprints are nested under "router."
 
 
 @theme_router.before_request
@@ -19,11 +43,24 @@ def require_curation_services() -> Tuple[Response, int] | None:
     """The curation tool is optional: without its ClickHouse (or Ollama, for the candidate list) configured, answer 503."""
     if not settings.CLICKHOUSE_SERVER:
         return (
-            jsonify({"error": "The topic curation service is not configured.", "code": "curation_not_configured"}),
+            jsonify(
+                {
+                    "error": "The topic curation service is not configured.",
+                    "code": "curation_not_configured",
+                }
+            ),
             503,
         )
     if (request.endpoint or "").endswith(EMBEDDING_ROUTES) and not (settings.OLLAMA_URL and settings.OLLAMA_MODEL):
-        return jsonify({"error": "The embedding service is not configured.", "code": "embeddings_not_configured"}), 503
+        return (
+            jsonify(
+                {
+                    "error": "The embedding service is not configured.",
+                    "code": "embeddings_not_configured",
+                }
+            ),
+            503,
+        )
     return None
 
 
@@ -32,39 +69,46 @@ RERANK_TOP_N = theme_service.RERANK_MAX_TOPICS  # default size of the list: 120 
 SEARCH_LIMIT_MAX = 100  # D-008
 
 
+def _json_object() -> dict:
+    """The JSON body of the request, which must be an object (an empty body is not valid; `null` counts as `{}`)."""
+    try:
+        body = request.get_json(force=True)
+    except BadRequest:
+        raise InvalidParamException("The request body must be valid JSON.")
+    if body is None:
+        return {}
+    if not isinstance(body, dict):
+        raise InvalidParamException("The request body must be a JSON object.")
+    return body
+
+
 def _int_in_range(value: object, name: str, minimum: int, maximum: int) -> int:
-    """Returns `value` as an int when it is an integer (or a string or float
-    that is exactly one) within [minimum, maximum]; otherwise raises the
-    ValueError that the routes turn into a 400. bool is not accepted."""
+    """Returns `value` as an int when it is an integer (or a string or float that is exactly one) within
+    [minimum, maximum]; otherwise raises InvalidParamException (400). bool is not accepted.
+    """
     message = f"{name} must be an integer between {minimum} and {maximum}."
     if isinstance(value, bool):
-        raise ValueError(message)
+        raise InvalidParamException(message)
     try:
         if isinstance(value, float):
             if not value.is_integer():
-                raise ValueError(message)
+                raise InvalidParamException(message)
             number = int(value)
         else:
             number = int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
-        raise ValueError(message)
+        raise InvalidParamException(message)
     if not minimum <= number <= maximum:
-        raise ValueError(message)
+        raise InvalidParamException(message)
     return number
 
 
-# NOTA: la sección 9 del documento de diseño original ubicaba estos
-# endpoints bajo /api/... -- se corrigió a /app/... porque quyca reserva
-# /api/ para la "API experta" (consumo externo/automatizado) y /app/ para
-# lo que alimenta al frontend (Guatquyca), que es nuestro caso. También se
-# consolidaron los tres grupos originales (themes, curation, topics) bajo
-# un solo blueprint/prefijo "theme", siguiendo la convención de quyca de
-# un blueprint por entidad.
+# NOTE on routes: the curation endpoints live in one blueprint registered at /theme (D-103: no /app prefix),
+# following the Quyca convention of one blueprint per entity.
 #
-# NOTA sobre errores: a diferencia del patrón exacto de otros *_app_router
-# (que capturan Exception genérico -> 400 siempre), acá se distingue
-# NotEntityException -> 404, por ser un caso de error claramente
-# diferenciable y frecuente en estas rutas (eje no encontrado).
+# NOTE on errors (D-007): the routes have no try/except. `register_error_handlers` answers InvalidParamException
+# with 400 (validation only), NotEntityException with 404 (theme not found) and any other exception with a generic 500
+# "Internal server error" (reported to Sentry, never `str(e)`). The reranker has its own handler (503) above.
 
 
 """
@@ -83,18 +127,12 @@ instrucción de consulta de Qwen3-Embedding) y devuelve el top N de tópicos má
 
 @theme_router.route("/candidates", methods=["POST"])
 def get_candidates() -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        seed_text = body.get("seed_text")
-        if not seed_text:
-            raise ValueError("seed_text es obligatorio.")
-        top_n = _int_in_range(body.get("top_n", RERANK_TOP_N), "top_n", 1, TOP_N_MAX)
-        return jsonify(theme_service.get_candidates(seed_text, top_n=top_n))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    seed_text = body.get("seed_text")
+    if not seed_text:
+        raise InvalidParamException("seed_text es obligatorio.")
+    top_n = _int_in_range(body.get("top_n", RERANK_TOP_N), "top_n", 1, TOP_N_MAX)
+    return jsonify(theme_service.get_candidates(seed_text, top_n=top_n))
 
 
 """
@@ -114,32 +152,20 @@ servicio no responde o tarda más de 60 s.
 
 @theme_router.route("/candidates/rerank", methods=["POST"])
 def rerank_candidates() -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        seed_text = body.get("seed_text")
-        if not seed_text or not isinstance(seed_text, str):
-            raise ValueError("seed_text es obligatorio.")
-        topic_ids = body.get("topic_ids")
-        if not isinstance(topic_ids, list) or not topic_ids:
-            raise ValueError("topic_ids debe ser un arreglo no vacío.")
-        if len(topic_ids) > theme_service.RERANK_MAX_TOPICS:
-            raise ValueError(f"topic_ids admite como máximo {theme_service.RERANK_MAX_TOPICS} elementos.")
-        if not all(isinstance(t, str) and t for t in topic_ids):
-            raise ValueError("topic_ids debe contener solo cadenas no vacías.")
-        if len(set(topic_ids)) != len(topic_ids):
-            raise ValueError("topic_ids no admite repetidos.")
-        return jsonify(theme_service.rerank_candidates(seed_text, topic_ids))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except RerankerUnavailableException as e:
-        capture_exception(e)
-        return (
-            jsonify({"error": "El servicio de reordenamiento no está disponible.", "code": "reranker_unavailable"}),
-            503,
-        )
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    seed_text = body.get("seed_text")
+    if not seed_text or not isinstance(seed_text, str):
+        raise InvalidParamException("seed_text es obligatorio.")
+    topic_ids = body.get("topic_ids")
+    if not isinstance(topic_ids, list) or not topic_ids:
+        raise InvalidParamException("topic_ids debe ser un arreglo no vacío.")
+    if len(topic_ids) > theme_service.RERANK_MAX_TOPICS:
+        raise InvalidParamException(f"topic_ids admite como máximo {theme_service.RERANK_MAX_TOPICS} elementos.")
+    if not all(isinstance(t, str) and t for t in topic_ids):
+        raise InvalidParamException("topic_ids debe contener solo cadenas no vacías.")
+    if len(set(topic_ids)) != len(topic_ids):
+        raise InvalidParamException("topic_ids no admite repetidos.")
+    return jsonify(theme_service.rerank_candidates(seed_text, topic_ids))
 
 
 """
@@ -157,17 +183,11 @@ def rerank_candidates() -> Response | Tuple[Response, int]:
 
 @theme_router.route("/search", methods=["GET"])
 def search_topics() -> Response | Tuple[Response, int]:
-    try:
-        q = request.args.get("q")
-        if not q:
-            raise ValueError("El parámetro 'q' es obligatorio.")
-        limit = _int_in_range(request.args.get("limit", 50), "limit", 1, SEARCH_LIMIT_MAX)
-        return jsonify(theme_service.search_topics(q, limit=limit))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    q = request.args.get("q")
+    if not q:
+        raise InvalidParamException("El parámetro 'q' es obligatorio.")
+    limit = _int_in_range(request.args.get("limit", 50), "limit", 1, SEARCH_LIMIT_MAX)
+    return jsonify(theme_service.search_topics(q, limit=limit))
 
 
 """
@@ -186,23 +206,17 @@ def search_topics() -> Response | Tuple[Response, int]:
 
 @theme_router.route("", methods=["POST"])
 def create_theme() -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        for field in ("name", "seed_text", "curator"):
-            if not body.get(field):
-                raise ValueError(f"{field} es obligatorio.")
-        result = theme_service.create_theme(
-            name=body["name"],
-            description=body.get("description"),
-            seed_text=body["seed_text"],
-            curator=body["curator"],
-        )
-        return jsonify(result), 201
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    for field in ("name", "seed_text", "curator"):
+        if not body.get(field):
+            raise InvalidParamException(f"{field} es obligatorio.")
+    result = theme_service.create_theme(
+        name=body["name"],
+        description=body.get("description"),
+        seed_text=body["seed_text"],
+        curator=body["curator"],
+    )
+    return jsonify(result), 201
 
 
 """
@@ -216,11 +230,7 @@ def create_theme() -> Response | Tuple[Response, int]:
 
 @theme_router.route("", methods=["GET"])
 def list_themes() -> Response | Tuple[Response, int]:
-    try:
-        return jsonify(theme_service.list_themes())
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    return jsonify(theme_service.list_themes())
 
 
 """
@@ -237,13 +247,7 @@ def list_themes() -> Response | Tuple[Response, int]:
 
 @theme_router.route("/<theme_id>", methods=["GET"])
 def get_theme(theme_id: str) -> Response | Tuple[Response, int]:
-    try:
-        return jsonify(theme_service.get_theme(theme_id))
-    except NotEntityException as e:
-        return jsonify({"error": str(e)}), 404
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    return jsonify(theme_service.get_theme(theme_id))
 
 
 """
@@ -264,27 +268,19 @@ de un eje. justification es obligatoria si status='borderline'.
 
 @theme_router.route("/<theme_id>/topics/<topic_id>", methods=["PATCH"])
 def classify_topic(theme_id: str, topic_id: str) -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        status = body.get("status")
-        if status not in ("included", "excluded", "borderline"):
-            raise ValueError("status debe ser 'included', 'excluded' o 'borderline'.")
-        result = theme_service.classify_topic(
-            theme_id=theme_id,
-            topic_id=topic_id,
-            status=status,
-            method=body.get("method", "automatic"),
-            similarity_score=body.get("similarity_score"),
-            justification=body.get("justification"),
-        )
-        return jsonify(result)
-    except NotEntityException as e:
-        return jsonify({"error": str(e)}), 404
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    status = body.get("status")
+    if status not in ("included", "excluded", "borderline"):
+        raise InvalidParamException("status debe ser 'included', 'excluded' o 'borderline'.")
+    result = theme_service.classify_topic(
+        theme_id=theme_id,
+        topic_id=topic_id,
+        status=status,
+        method=body.get("method", "automatic"),
+        similarity_score=body.get("similarity_score"),
+        justification=body.get("justification"),
+    )
+    return jsonify(result)
 
 
 """
@@ -305,27 +301,19 @@ method='manual' y sin similarity_score.
 
 @theme_router.route("/<theme_id>/topics", methods=["POST"])
 def add_manual_topic(theme_id: str) -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        topic_id = body.get("topic_id")
-        if not topic_id:
-            raise ValueError("topic_id es obligatorio.")
-        result = theme_service.classify_topic(
-            theme_id=theme_id,
-            topic_id=topic_id,
-            status=body.get("status", "included"),
-            method="manual",
-            similarity_score=None,
-            justification=body.get("justification"),
-        )
-        return jsonify(result), 201
-    except NotEntityException as e:
-        return jsonify({"error": str(e)}), 404
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    topic_id = body.get("topic_id")
+    if not topic_id:
+        raise InvalidParamException("topic_id es obligatorio.")
+    result = theme_service.classify_topic(
+        theme_id=theme_id,
+        topic_id=topic_id,
+        status=body.get("status", "included"),
+        method="manual",
+        similarity_score=None,
+        justification=body.get("justification"),
+    )
+    return jsonify(result), 201
 
 
 """
@@ -350,19 +338,11 @@ escala. Soporta éxito parcial: un ítem inválido no aborta los demás.
 
 @theme_router.route("/<theme_id>/topics/bulk", methods=["POST"])
 def classify_topics_bulk(theme_id: str) -> Response | Tuple[Response, int]:
-    try:
-        body = request.get_json(force=True) or {}
-        topics = body.get("topics")
-        if not isinstance(topics, list) or not topics:
-            raise ValueError("topics es obligatorio y debe ser un arreglo no vacío.")
-        return jsonify(theme_service.classify_topics_bulk(theme_id, topics))
-    except NotEntityException as e:
-        return jsonify({"error": str(e)}), 404
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    body = _json_object()
+    topics = body.get("topics")
+    if not isinstance(topics, list) or not topics:
+        raise InvalidParamException("topics es obligatorio y debe ser un arreglo no vacío.")
+    return jsonify(theme_service.classify_topics_bulk(theme_id, topics))
 
 
 """
@@ -380,22 +360,16 @@ se persiste el historial de exportaciones).
 
 @theme_router.route("/<theme_id>/export", methods=["GET"])
 def export_theme(theme_id: str) -> Response | Tuple[Response, int]:
-    try:
-        export_format = request.args.get("format", "json")
-        result = theme_service.export_theme(theme_id)
-        if export_format == "csv":
-            rows = result["data"]
-            output = io.StringIO()
-            if rows:
-                writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
-                writer.writeheader()
-                writer.writerows(rows)
-            response = Response(output.getvalue(), mimetype="text/csv")
-            response.headers["Content-Disposition"] = f"attachment; filename=eje_{theme_id}.csv"
-            return response
-        return jsonify(result)
-    except NotEntityException as e:
-        return jsonify({"error": str(e)}), 404
-    except Exception as e:
-        capture_exception(e)
-        return jsonify({"error": str(e)}), 400
+    export_format = request.args.get("format", "json")
+    result = theme_service.export_theme(theme_id)
+    if export_format == "csv":
+        rows = result["data"]
+        output = io.StringIO()
+        if rows:
+            writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+        response = Response(output.getvalue(), mimetype="text/csv")
+        response.headers["Content-Disposition"] = f"attachment; filename=eje_{theme_id}.csv"
+        return response
+    return jsonify(result)

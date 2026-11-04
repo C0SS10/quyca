@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
-from quyca.exceptions import NotEntityException
+from quyca.exceptions import InvalidParamException, NotEntityException
 from quyca.models.theme_model import CurationTopic, Theme, ThemeTopic, ThemeTopicDetail
-from quyca import ollama
-from quyca.clickhouse import client
+from quyca.clients import ollama
+from quyca.clients.clickhouse import client
 
 _TOPIC_COLUMNS = [
     "topic_id",
@@ -116,8 +116,26 @@ def create_theme(theme: Theme) -> datetime:
     now = _now()
     client.insert(
         "themes",
-        [[theme.theme_id, theme.name, theme.description or "", theme.seed_text, theme.curator, now, now]],
-        column_names=["theme_id", "name", "description", "seed_text", "curator", "created_at", "updated_at"],
+        [
+            [
+                theme.theme_id,
+                theme.name,
+                theme.description or "",
+                theme.seed_text,
+                theme.curator,
+                now,
+                now,
+            ]
+        ],
+        column_names=[
+            "theme_id",
+            "name",
+            "description",
+            "seed_text",
+            "curator",
+            "created_at",
+            "updated_at",
+        ],
     )
     return now
 
@@ -199,7 +217,12 @@ def list_themes() -> list[tuple[Theme, dict]]:
             created_at=created_at,
             updated_at=updated_at,
         )
-        summary = {"included": included, "excluded": excluded, "borderline": borderline, "manual": manual}
+        summary = {
+            "included": included,
+            "excluded": excluded,
+            "borderline": borderline,
+            "manual": manual,
+        }
         output.append((theme, summary))
     return output
 
@@ -212,7 +235,7 @@ def classify_topic(theme_topic: ThemeTopic) -> datetime:
     lecturas usan FINAL mientras tanto (ver get_theme_topics). Returns the
     `classified_at` written."""
     if theme_topic.status == "borderline" and not theme_topic.justification:
-        raise ValueError("justification es obligatoria cuando status='borderline' (FR7).")
+        raise InvalidParamException("justification es obligatoria cuando status='borderline' (FR7).")
     now = _now()
     client.insert(
         "theme_topics",
@@ -227,7 +250,15 @@ def classify_topic(theme_topic: ThemeTopic) -> datetime:
                 now,
             ]
         ],
-        column_names=["theme_id", "topic_id", "status", "similarity_score", "method", "justification", "classified_at"],
+        column_names=[
+            "theme_id",
+            "topic_id",
+            "status",
+            "similarity_score",
+            "method",
+            "justification",
+            "classified_at",
+        ],
     )
     return now
 
@@ -251,13 +282,29 @@ def classify_topics_bulk(theme_topics: list[ThemeTopic]) -> datetime | None:
         return None
     now = _now()
     rows = [
-        [tt.theme_id, tt.topic_id, tt.status, tt.similarity_score, tt.method, tt.justification or "", now]
+        [
+            tt.theme_id,
+            tt.topic_id,
+            tt.status,
+            tt.similarity_score,
+            tt.method,
+            tt.justification or "",
+            now,
+        ]
         for tt in theme_topics
     ]
     client.insert(
         "theme_topics",
         rows,
-        column_names=["theme_id", "topic_id", "status", "similarity_score", "method", "justification", "classified_at"],
+        column_names=[
+            "theme_id",
+            "topic_id",
+            "status",
+            "similarity_score",
+            "method",
+            "justification",
+            "classified_at",
+        ],
     )
     return now
 

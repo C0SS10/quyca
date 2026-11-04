@@ -50,7 +50,10 @@ def _embed(text: str) -> tuple[list[float], bool]:
     text may have been cut. An input of exactly that many tokens also
     reports True (accepted, D-008).
     """
-    payload: dict = {"model": settings.OLLAMA_MODEL, "input": [f"Instruct: {QUERY_TASK}\nQuery:{text}"]}
+    payload: dict = {
+        "model": settings.OLLAMA_MODEL,
+        "input": [f"Instruct: {QUERY_TASK}\nQuery:{text}"],
+    }
     if settings.OLLAMA_NUM_GPU is not None:
         payload["options"] = {"num_gpu": settings.OLLAMA_NUM_GPU}
     resp = requests.post(f"{settings.OLLAMA_URL}/api/embed", json=payload, timeout=120)

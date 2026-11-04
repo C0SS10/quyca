@@ -3,14 +3,14 @@ import uuid
 
 from pydantic import ValidationError
 
-from quyca.exceptions import RerankerUnavailableException
+from quyca.exceptions import InvalidParamException, RerankerUnavailableException
 from quyca.models.theme_model import (
     Theme,
     ThemeTopic,
     ThemeTopicMethod,
     ThemeTopicStatus,
 )
-from quyca import reranker
+from quyca.clients import reranker
 from quyca.repositories import theme_repository
 
 _UNKNOWN_TOPIC_MESSAGE = "topic_id {topic_id} does not exist in the topic catalog."
@@ -39,14 +39,14 @@ def get_candidates(seed_text: str, top_n: int = RERANK_MAX_TOPICS) -> dict:
 def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
     """Phase 2 of 2 (D-097): the topics of phase 1 reordered by the reranker, all at once. `rank` is the new position and
     `cosine_rank` the position in `topic_ids` (the order of phase 1). The reranker score is not returned (D-090).
-    Raises ValueError (400) on invalid ids and RerankerUnavailableException (503) when the service fails or takes > 60 s.
+    Raises InvalidParamException (400) on invalid ids and RerankerUnavailableException (503) when the service fails or takes > 60 s.
     """
     started_at = time.monotonic()
     topics = theme_repository.get_topics_with_cosine(seed_text, topic_ids)
     found = {t.topic_id for t in topics}
     missing = [t for t in topic_ids if t not in found]
     if missing:
-        raise ValueError(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=missing[0]))
+        raise InvalidParamException(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=missing[0]))
     cosine_rank = {t: i for i, t in enumerate(topic_ids, start=1)}
     documents = [{"topic_id": t.topic_id, "text": f"{t.name}. {t.keywords}. {t.summary}"} for t in topics]
     order, seed_truncated = reranker.rerank(seed_text, documents, started_at)
@@ -124,19 +124,22 @@ def classify_topic(
     antes de clasificar."""
     theme_repository.get_theme_by_id(theme_id)  # NotEntityException si no existe
     if topic_id not in theme_repository.get_existing_topic_ids([topic_id]):
-        raise ValueError(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=topic_id))
+        raise InvalidParamException(_UNKNOWN_TOPIC_MESSAGE.format(topic_id=topic_id))
     if method == "manual":
         # Same rule as bulk: a manually added topic never carries a score,
         # whatever the client sends (D-011).
         similarity_score = None
-    theme_topic = ThemeTopic(
-        theme_id=theme_id,
-        topic_id=topic_id,
-        status=status,
-        method=method,
-        similarity_score=similarity_score,
-        justification=justification,
-    )
+    try:
+        theme_topic = ThemeTopic(
+            theme_id=theme_id,
+            topic_id=topic_id,
+            status=status,
+            method=method,
+            similarity_score=similarity_score,
+            justification=justification,
+        )
+    except ValidationError as e:  # invalid method, score of the wrong type...: the client's fault, not a server error
+        raise InvalidParamException(str(e)) from e
     theme_topic.classified_at = theme_repository.classify_topic(theme_topic)
     return {"data": theme_topic.model_dump()}
 
