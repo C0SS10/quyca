@@ -13,14 +13,14 @@ SESION_ACTIVA = "sesion_activa"
 def login(email: str, password: str) -> dict:
     """Validates credentials and returns the user info plus an access token.
     Raises UnauthorizedException for wrong credentials and ForbiddenException for a deactivated account."""
-    email = (email or "").strip()
+    email = email or ""
     password = password or ""
 
-    if not email or not password:
+    if not isinstance(email, str) or not isinstance(password, str) or not email.strip() or not password:
         raise InvalidParamException("correo y contraseña requeridos")
 
     try:
-        user = user_repository.get_user_by_email_and_password(email, password)
+        user = user_repository.get_user_by_email_and_password(email.strip(), password)
     except NotEntityException as e:
         raise UnauthorizedException(str(e)) from e
 
@@ -44,6 +44,12 @@ def login(email: str, password: str) -> dict:
     }
 
 
+def is_user_active(email: str) -> bool:
+    """False when the account was deactivated or no longer exists, even if its token is still valid."""
+    user = user_repository.get_user_by_email(email)
+    return user is not None and user.is_active
+
+
 def get_session() -> dict[str, Any]:
     """Returns the current session status (one of the SESION_*/TOKEN_* constants) and the user when it is active."""
     token = jwt_token_service.get_access_token_cookie()
@@ -55,7 +61,7 @@ def get_session() -> dict[str, Any]:
         return {"status": TOKEN_EXPIRADO, "msg": "Token expirado o inválido"}
 
     email = claims.get("sub")
-    if not isinstance(email, str) or not email.strip():
+    if not isinstance(email, str) or not email.strip() or not is_user_active(email):
         return {"status": TOKEN_EXPIRADO, "msg": "Token revocado o inválido"}
 
     return {

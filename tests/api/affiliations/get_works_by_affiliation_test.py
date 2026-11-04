@@ -1,0 +1,98 @@
+from quyca.clients.mongo import database
+
+ENDPOINT = "/affiliation"
+
+
+def test_get_works_by_institution(client):
+    random_institution_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "education"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(f"{ENDPOINT}/institution/{random_institution_id}/research/products")
+    assert response.status_code == 200
+
+
+def test_get_works_by_faculty(client):
+    random_faculty_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "faculty"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(f"{ENDPOINT}/faculty/{random_faculty_id}/research/products")
+    assert response.status_code == 200
+
+
+def test_get_works_by_department(client):
+    random_department_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "department"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(f"{ENDPOINT}/department/{random_department_id}/research/products")
+    assert response.status_code == 200
+
+
+def test_get_works_by_group(client):
+    random_group_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "group"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(f"{ENDPOINT}/group/{random_group_id}/research/products")
+    assert response.status_code == 200
+
+
+def test_get_works_by_institution_with_filters(client):
+    random_institution_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "education"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(
+        f"{ENDPOINT}/institution/{random_institution_id}/research/products?product_type=scholar_article,scienti_Publicado en revista especializada"
+    )
+    assert response.status_code == 200
+
+
+def test_get_works_by_faculty_with_filters(client):
+    random_faculty_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "faculty"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(
+        f"{ENDPOINT}/faculty/{random_faculty_id}/research/products?product_type=scholar_article,scienti_Publicado en revista especializada"
+    )
+    assert response.status_code == 200
+
+
+def test_get_works_by_department_with_filters(client):
+    random_department_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "department"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(
+        f"{ENDPOINT}/department/{random_department_id}/research/products?product_type=scholar_article,scienti_Publicado en revista especializada"
+    )
+    assert response.status_code == 200
+
+
+def test_get_works_by_group_with_filters(client):
+    random_group_id = (
+        database["affiliations"]
+        .aggregate([{"$match": {"types.type": "group"}}, {"$sample": {"size": 1}}])
+        .next()["_id"]
+    )
+    response = client.get(
+        f"{ENDPOINT}/group/{random_group_id}/research/products?product_type=scholar_article,scienti_Publicado en revista especializada"
+    )
+    assert response.status_code == 200
+
+
+def test_get_works_by_affiliation_invalid_years_returns_400(client):
+    response = client.get("/affiliation/group/COL0012506/research/products?max=5&page=1&years=2015-2020")
+
+    assert response.status_code == 400
+    assert "Invalid years" in response.get_json()["error"]

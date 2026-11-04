@@ -31,6 +31,6 @@ def get_upload_claims(claims: dict[str, Any]) -> tuple[str, str, str, str] | Non
         isinstance(email, str) and isinstance(ror_id, str) and isinstance(institution, str) and isinstance(role, str)
     ):
         return None
-    if not (email and ror_id and institution and role):
+    if not (email.strip() and ror_id.strip() and institution.strip() and role.strip()):
         return None
     return email, ror_id, institution, role

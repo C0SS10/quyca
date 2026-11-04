@@ -2,7 +2,7 @@ import re
 from typing import List, Dict, Any
 from quyca.validators import base_validator
 
-COUNTRY_RE = re.compile(r"^[A-z]{2}$")
+COUNTRY_RE = re.compile(r"^[A-Z]{2}$")
 
 
 def validate(row: dict, index: int) -> List[Dict[str, Any]]:

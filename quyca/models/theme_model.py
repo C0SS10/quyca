@@ -3,15 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+ThemeTopicStatus = Literal["included", "excluded", "borderline"]
+ThemeTopicMethod = Literal["automatic", "manual"]
+
 
 class CurationTopic(BaseModel):
-    """An entry in the OpenAlex topic catalog, including its hierarchy.
-
-    Unlike `Topic`/`TopicBase` in base_model.py, those represent topics
-    already assigned to a work. This is a topic from the complete curation
-    catalog (the `topics` table in ClickHouse), with or without a similarity
-    score depending on the context in which it is used.
-    """
+    """A topic of the whole OpenAlex catalog (ClickHouse `topics`), unlike `Topic`, which is a topic of a work."""
 
     topic_id: str
     name: str
@@ -25,13 +22,13 @@ class CurationTopic(BaseModel):
     domain_name: str | None = None
     wikipedia_url: str | None = None
     similarity_score: float | None = None
-    # Position in the list the response returns (1 = first) and position in the cosine list of phase 1 (D-097).
+    # Position in the returned list and in the cosine list of the first phase (1 = first).
     rank: int | None = None
     cosine_rank: int | None = None
 
 
 class Theme(BaseModel):
-    """A curated thematic axis."""
+    """A thematic axis curated from a seed text."""
 
     theme_id: str
     name: str
@@ -42,15 +39,8 @@ class Theme(BaseModel):
     updated_at: datetime | None = None
 
 
-ThemeTopicStatus = Literal["included", "excluded", "borderline"]
-ThemeTopicMethod = Literal["automatic", "manual"]
-
-
 class ThemeTopic(BaseModel):
-    """Classification of a topic within a thematic axis (a row in the
-    `theme_topics` table in ClickHouse). See the note about ReplacingMergeTree
-    and FINAL in theme_repository.py before writing queries against this
-    table."""
+    """The classification of a topic in a theme (ClickHouse `theme_topics`)."""
 
     theme_id: str
     topic_id: str
@@ -62,11 +52,7 @@ class ThemeTopic(BaseModel):
 
 
 class ThemeTopicDetail(ThemeTopic):
-    """A classified topic as `GET /theme/<theme_id>` returns it: the
-    classification plus the catalog fields of the topic, flat and named like
-    `CurationTopic` (D-009). The topic fields are None when the `topic_id` is
-    not in the catalog (LEFT JOIN). `similarity_score` stays the one of the
-    classification."""
+    """A classification with the catalog fields of its topic, None when the topic is not in the catalog."""
 
     name: str | None = None
     summary: str | None = None

@@ -18,8 +18,9 @@ def get_service() -> Any:
     if not os.path.exists(credentials_path):
         raise FileNotFoundError(f"No se encontró el archivo {credentials_path }")
 
+    # The token is the server's own file (GOOGLE_CREDENTIALS), never user input.
     with open(credentials_path, "rb") as f:
-        creds = pickle.load(f)
+        creds = pickle.load(f)  # nosec B301
 
     if getattr(creds, "expired", False) and getattr(creds, "refresh_token", None):
         creds.refresh(Request())
@@ -53,11 +54,13 @@ def get_or_create_folder(service: Any, folder_name: str, parent_id: Optional[str
     """Finds or creates a folder and returns its id."""
     if parent_id is None:
         parent_id = current_app.config["GOOGLE_PARENT_ID"]
+    # The query quotes the name: a ' or \ in it (O'Higgins) would otherwise end the string early.
+    quoted_name = folder_name.replace("\\", "\\\\").replace("'", "\\'")
     if parent_id:
         parent_id = resolve_folder_id(service, parent_id)
-        query = f"name = '{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
+        query = f"name = '{quoted_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
     else:
-        query = f"name = '{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        query = f"name = '{quoted_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
 
     results: dict[str, Any] = (
         service.files()

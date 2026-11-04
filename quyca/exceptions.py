@@ -2,6 +2,10 @@ class ConflictException(Exception):
     """The change collides with existing data (the email or institution already has a user). HTTP 409."""
 
 
+class EmailDeliveryException(Exception):
+    """The email with the credentials could not be sent, so nothing was saved. HTTP 502."""
+
+
 class ForbiddenException(Exception):
     """The session is valid but may not do this (not admin, another user's account, deactivated). HTTP 403."""
 
@@ -18,9 +22,9 @@ class ProjectFileException(Exception):
     """Archive of projects cannot be read (extension, unreadable content or without headers)."""
 
 
+class RerankerUnavailableException(Exception):
+    """The reranker of the topic curation tool is off, failed or took too long. HTTP 503."""
+
+
 class UnauthorizedException(Exception):
     """There is no valid session (missing or expired token, wrong credentials). Answered with HTTP 401."""
-
-
-class RerankerUnavailableException(Exception):
-    """The reranker service is off, does not answer or took longer than the allowed time (the theme route answers 503)."""

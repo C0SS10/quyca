@@ -80,8 +80,9 @@ def _get_service() -> Any:
     if not os.path.exists(credentials_path):
         raise FileNotFoundError(f"No se encontró el archivo {credentials_path}")
 
+    # The token is the server's own file (GOOGLE_CREDENTIALS), never user input.
     with open(credentials_path, "rb") as f:
-        creds = pickle.load(f)
+        creds = pickle.load(f)  # nosec B301
 
     if getattr(creds, "expired", False) and getattr(creds, "refresh_token", None):
         creds.refresh(Request())
@@ -95,7 +96,7 @@ def _get_service() -> Any:
 
 def get_color_from_ror(ror_id: str) -> dict[str, str]:
     """Selects a deterministic label color based on ror_id."""
-    num = int(hashlib.md5(ror_id.encode("utf-8")).hexdigest(), 16)
+    num = int(hashlib.md5(ror_id.encode("utf-8"), usedforsecurity=False).hexdigest(), 16)
     index = num % len(LABEL_COLOR_PAIRS)
     return LABEL_COLOR_PAIRS[index]
 
@@ -180,9 +181,6 @@ def send_labeled_email(
     """Sends an email and applies an institution/type Gmail label."""
     service = _get_service()
     result = _send_email(service, to_email, subject, body_html, attachments)
-
-    if not result.get("success"):
-        return result
 
     message_id = result.get("id")
     if not isinstance(message_id, str):

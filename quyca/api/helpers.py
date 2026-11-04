@@ -7,6 +7,7 @@ from werkzeug.exceptions import HTTPException
 
 from quyca.exceptions import (
     ConflictException,
+    EmailDeliveryException,
     ForbiddenException,
     InvalidParamException,
     NotEntityException,
@@ -25,6 +26,14 @@ def parse_query_params() -> QueryParams:
         raise InvalidParamException(str(e)) from e
 
 
+def parse_json_object(force: bool = False) -> dict:
+    """JSON body as a dict: an absent or malformed body is empty, and any other JSON value answers 400."""
+    data = request.get_json(force=force, silent=True) or {}
+    if not isinstance(data, dict):
+        raise InvalidParamException("El cuerpo de la petición debe ser un objeto JSON.")
+    return data
+
+
 def file_response(content: Iterable[str] | bytes, filename: str, content_type: str) -> Response:
     """Download response; a generator is streamed while it is produced."""
     return Response(
@@ -38,6 +47,7 @@ ERROR_STATUSES: dict[type[Exception], int] = {
     ForbiddenException: 403,
     NotEntityException: 404,
     ConflictException: 409,
+    EmailDeliveryException: 502,
 }
 
 

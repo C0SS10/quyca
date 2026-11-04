@@ -1,23 +1,34 @@
-import random
+import re
+import secrets
 import string
 import time
 from typing import Any, List
 
-from quyca.exceptions import ConflictException, ForbiddenException, InvalidParamException, NotEntityException
+from quyca.exceptions import (
+    ConflictException,
+    EmailDeliveryException,
+    ForbiddenException,
+    InvalidParamException,
+    NotEntityException,
+)
 from quyca.models.user_model import User
 from quyca.services import notification_service
 from quyca.repositories import user_repository
 from quyca.security.password_hasher import hash_password
 
+EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
 
 def create_user(
     email: str, institution: str, ror_id: str, role: str, raw_payload: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """Creates a new user and sends credentials via email."""
+    """Sends the credentials and then creates the user, so a failed email leaves nothing saved and can be retried."""
     if raw_payload is None:
         raise InvalidParamException("Payload requerido: institution, ror_id y role.")
 
     _validate_create_user_payload(raw_payload)
+    email, institution, ror_id, role = email.strip().lower(), institution.strip(), ror_id.strip(), role.strip()
+    _validate_email(email)
 
     if role.lower() == "admin":
         raise ForbiddenException("No se pueden crear usuarios con el role 'admin'.")
@@ -29,24 +40,29 @@ def create_user(
             f"{existing_by_ror.email}. Si deseas asignar un nuevo correo, edita el usuario existente."
         )
 
+    if user_repository.get_user_by_email(email):
+        raise ConflictException(f"El usuario con correo {email} ya existe.")
+
     raw_password = _generate_password()
-    hashe_password = hash_password(raw_password)
+    hashed_password = hash_password(raw_password)
 
     user = User(
         id=ror_id,
-        email=email.strip().lower(),
-        password=hashe_password,
-        institution=institution.strip(),
-        role=role.strip(),
+        email=email,
+        password=hashed_password,
+        institution=institution,
+        role=role,
         is_active=True,
         apikey=None,
     )
 
-    user_repository.create_user(user)
-
     subject = "Tu cuenta en la plataforma ImpactU ha sido creada exitosamente."
 
-    notification_service.send_custom_email(subject, role, institution, email, raw_password, ror_id=ror_id)
+    _ensure_email_sent(
+        notification_service.send_custom_email(subject, role, institution, email, raw_password, ror_id=ror_id)
+    )
+
+    user_repository.create_user(user)
 
     return {
         "success": True,
@@ -77,7 +93,7 @@ def activate_user(email: str) -> dict[str, Any]:
 
 
 def update_password(email: str) -> dict[str, Any]:
-    """Resets password, stores hash, and emails the new credentials."""
+    """Emails the new password and then stores its hash, so a failed email keeps the old password working."""
 
     user = user_repository.get_user_by_email(email)
 
@@ -90,13 +106,16 @@ def update_password(email: str) -> dict[str, Any]:
     new_password = _generate_password()
     hashed = hash_password(new_password)
 
-    user_repository.update_user_password(email, hashed)
-
     subject = "Tu contraseña ha sido restablecida"
 
-    notification_service.send_email_change_password(
-        email=email, subject=subject, password=new_password, institution=user.institution, ror_id=user.id
+    _ensure_email_sent(
+        notification_service.send_email_change_password(
+            email=email, subject=subject, password=new_password, institution=user.institution, ror_id=user.id
+        )
     )
+
+    user_repository.update_user_password(email, hashed)
+
     return {"success": True, "msg": f"La contraseña de {email} se actualizó correctamente."}
 
 
@@ -116,44 +135,50 @@ def update_user_info(old_email: str, new_email: str, new_role: str, raw_payload:
     if current.role.strip().lower() == "admin":
         raise ForbiddenException("No se pueden editar los datos de este usuario")
 
-    correo_cambiado = old_email.strip().lower() != new_email.strip().lower()
+    new_email = new_email.strip().lower()
+    correo_cambiado = old_email.strip().lower() != new_email
     role_cambiado = bool(new_role) and new_role.strip().lower() != current.role.strip().lower()
 
     if not correo_cambiado and not role_cambiado:
         raise InvalidParamException("No se detectaron cambios para actualizar.")
 
+    if not correo_cambiado:
+        if not user_repository.update_user_info(old_email, old_email, new_role):
+            raise NotEntityException(f"Usuario con correo {old_email} no encontrado.")
+        return {"success": True, "msg": f"Rol del usuario {old_email} actualizado correctamente."}
+
+    _validate_email(new_email)
+    if user_repository.get_user_by_email(new_email):
+        raise ConflictException(f"Ya existe un usuario con el correo {new_email}")
+
+    new_password = _generate_password()
+    hashed = hash_password(new_password)
+
+    # The email goes first: if it fails, the user keeps the old email and password.
+    subject = "Tu cuenta en la plataforma ImpactU ha sido creada exitosamente."
+    _ensure_email_sent(
+        notification_service.send_custom_email(
+            subject=subject,
+            role=new_role or current.role,
+            institution=current.institution,
+            email=new_email,
+            password=new_password,
+            ror_id=current.id,
+        )
+    )
+
     updated_user = user_repository.update_user_info(old_email, new_email, new_role)
     if not updated_user:
         raise NotEntityException(f"Usuario con correo {old_email} no encontrado.")
+    user_repository.update_user_password(updated_user.email, hashed)
 
-    if role_cambiado and not correo_cambiado:
-        return {"success": True, "msg": f"Rol del usuario {old_email} actualizado correctamente."}
+    msg = (
+        f"Correo del usuario actualizado correctamente y notificación enviada a {new_email}."
+        if not role_cambiado
+        else f"Correo y rol del usuario actualizados correctamente. Notificación enviada a {new_email}."
+    )
 
-    if correo_cambiado:
-        new_password = _generate_password()
-        hashed = hash_password(new_password)
-
-        user_repository.update_user_password(updated_user.email, hashed)
-
-        subject = "Tu cuenta en la plataforma ImpactU ha sido creada exitosamente."
-        notification_service.send_custom_email(
-            subject=subject,
-            role=updated_user.role,
-            institution=updated_user.institution,
-            email=updated_user.email,
-            password=new_password,
-            ror_id=updated_user.id,
-        )
-
-        msg = (
-            f"Correo del usuario actualizado correctamente y notificación enviada a {new_email}."
-            if not role_cambiado
-            else f"Correo y rol del usuario actualizados correctamente. Notificación enviada a {new_email}."
-        )
-
-        return {"success": True, "msg": msg}
-
-    return {"success": True, "msg": "Usuario actualizado correctamente."}
+    return {"success": True, "msg": msg}
 
 
 def regenerate_apikey(email: str, expires: int | None) -> dict[str, Any]:
@@ -182,13 +207,24 @@ def delete_apikey(email: str) -> dict[str, Any]:
 def _generate_password(length: int = 10) -> str:
     """Generates a random alphanumeric password."""
     characters = string.ascii_letters + string.digits
-    return "".join(random.choice(characters) for _ in range(length))
+    return "".join(secrets.choice(characters) for _ in range(length))
 
 
 def _generate_apikey_id(length: int = 10) -> str:
     """Generates a random API key identifier."""
     chars = string.ascii_letters + string.digits
-    return "".join(random.choice(chars) for _ in range(length))
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+
+def _ensure_email_sent(result: dict[str, Any]) -> None:
+    """Gmail answers its errors in the result instead of raising them."""
+    if not result.get("success"):
+        raise EmailDeliveryException("No se pudo enviar el correo con las credenciales. No se guardó ningún cambio.")
+
+
+def _validate_email(email: str) -> None:
+    if not EMAIL_PATTERN.fullmatch(email):
+        raise InvalidParamException(f"El correo '{email}' no es válido.")
 
 
 def _validate_create_user_payload(payload: dict[str, Any]) -> None:
@@ -206,6 +242,10 @@ def _validate_create_user_payload(payload: dict[str, Any]) -> None:
         if extra:
             msg_parts.append("Sobran: " + ", ".join(sorted(extra)))
         raise InvalidParamException(" | ".join(msg_parts))
+
+    invalid = sorted(key for key in required if not isinstance(payload[key], str) or not payload[key].strip())
+    if invalid:
+        raise InvalidParamException("Deben ser texto no vacío: " + ", ".join(invalid))
 
 
 def _validate_edit_user_payload(payload: dict[str, Any]) -> None:

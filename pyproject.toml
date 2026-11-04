@@ -39,12 +39,34 @@ types-requests = "^2.33.0.20261030"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
+pytest-cov = "^7.1.0"
+mongomock = "^4.3.0"
 
 [tool.mypy]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
-mypy_path = "."
+mypy_path = ".:tests"
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+# `pytest` a secas corre unit e integration, que no tocan nada real; tests/api se corre aparte.
+testpaths = ["tests/unit", "tests/integration"]
+# Hace importables los ayudantes compartidos: `from support.isolated import ...`.
+pythonpath = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+required_plugins = ["pytest-cov>=7.1"]
+xfail_strict = true
+markers = ["real_bcrypt: usa el costo de bcrypt de producción en vez del mínimo (lento)"]
+
+[tool.coverage.run]
+branch = true
+source = ["quyca"]
+
+[tool.coverage.report]
+skip_empty = true
+exclude_also = ["if __name__ == .__main__.:"]
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,17 +1,18 @@
 import io
-from typing import Tuple, Union
+from typing import Any
 import pandas as pd
+from xlsxwriter.utility import xl_col_to_name
 
 
 def to_excel_bytes(df: pd.DataFrame) -> io.BytesIO:
     """Writes the dataframe to an in-memory XLSX file."""
     output = io.BytesIO()
 
-    def sort_identification(value: int) -> Tuple[int, Union[int, str]]:
+    def sort_identification(value: Any) -> tuple[int, int | str]:
         """Sort key that prioritizes numeric identification values."""
         try:
             return (0, int(value))
-        except:
+        except (TypeError, ValueError, OverflowError):
             return (1, str(value))
 
     with pd.ExcelWriter(output, engine="xlsxwriter") as write:
@@ -25,30 +26,24 @@ def to_excel_bytes(df: pd.DataFrame) -> io.BytesIO:
         workbook = write.book
         worksheet = write.sheets["Validación"]
 
-        fmt_error = workbook.add_format({"bg_color": "#ffbaa6"})
-        fmt_warn = workbook.add_format({"bg_color": "#ffecac"})
-        fmt_dup = workbook.add_format({"bg_color": "#a6d4e2"})
-
         if "estado_de_validación" in df_sorted.columns:
-            for row_num, value in enumerate(df_sorted["estado_de_validación"], start=1):
-                if "Error" in value:
-                    fmt = fmt_error
-                elif "Advertencia" in value:
-                    fmt = fmt_warn
-                elif "Duplicado" in value:
-                    fmt = fmt_dup
-                else:
-                    fmt = None
-
-                if fmt:
-                    for col_num, cell_value in enumerate(df_sorted.iloc[row_num - 1]):
-                        if pd.isna(cell_value) or cell_value in [float("inf"), float("-inf")]:
-                            worksheet.write(row_num, col_num, "", fmt)
-                        else:
-                            worksheet.write(row_num, col_num, cell_value, fmt)
+            state_column = xl_col_to_name(df_sorted.columns.get_loc("estado_de_validación"))
+            # A conditional format colors the whole row and keeps each cell's own format, such as dates.
+            for state, color in (("Error", "#ffbaa6"), ("Advertencia", "#ffecac"), ("Duplicado", "#a6d4e2")):
+                worksheet.conditional_format(
+                    1,
+                    0,
+                    len(df_sorted),
+                    len(df_sorted.columns) - 1,
+                    {
+                        "type": "formula",
+                        "criteria": f'=ISNUMBER(SEARCH("{state}",${state_column}2))',
+                        "format": workbook.add_format({"bg_color": color}),
+                    },
+                )
 
         for i, col in enumerate(df_sorted.columns):
-            max_len = max(df_sorted[col].astype(str).map(len).max(), len(col)) + 2
+            max_len = max(df_sorted[col].astype(str).map(len).max(), len(str(col))) + 2
             worksheet.set_column(i, i, max_len)
 
         worksheet.autofilter(0, 0, len(df_sorted), len(df_sorted.columns) - 1)

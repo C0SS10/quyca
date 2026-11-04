@@ -1,6 +1,6 @@
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify
 
-from quyca.api.helpers import register_error_handlers
+from quyca.api.helpers import parse_json_object, register_error_handlers
 from quyca.api.permissions import require_admin, require_same_user
 from quyca.exceptions import InvalidParamException
 from quyca.services import user_service
@@ -13,7 +13,7 @@ register_error_handlers(user_crud_router, message_key="msg")
 @require_admin
 def create_user(email: str) -> tuple[Response, int]:
     """Creates a user and emails its credentials."""
-    data = request.get_json(silent=True) or {}
+    data = parse_json_object()
     result = user_service.create_user(
         email.strip().lower(), data.get("institution", ""), data.get("ror_id", ""), data.get("role", ""), data
     )
@@ -51,9 +51,11 @@ def update_password(email: str) -> tuple[Response, int]:
 def edit_user(email: str) -> tuple[Response, int]:
     """Edits the email and/or role of a user."""
     old_email = email.strip().lower()
-    data = request.get_json(force=True, silent=True) or {}
-    new_email = (data.get("email") or "").strip().lower()
-    new_role = (data.get("role") or "").strip().lower()
+    data = parse_json_object(force=True)
+    new_email, new_role = (data.get("email") or "", data.get("role") or "")
+    if not isinstance(new_email, str) or not isinstance(new_role, str):
+        raise InvalidParamException("Los campos email y role deben ser texto.")
+    new_email, new_role = new_email.strip().lower(), new_role.strip().lower()
     if not new_email and not new_role:
         raise InvalidParamException("Debes enviar al menos email o rol.")
     return jsonify(user_service.update_user_info(old_email, new_email or old_email, new_role, data)), 200
@@ -62,14 +64,14 @@ def edit_user(email: str) -> tuple[Response, int]:
 @user_crud_router.route("/users/<email>/apikey", methods=["POST"])
 @require_same_user
 def regenerate_apikey(email: str) -> tuple[Response, int]:
-    data = request.get_json(silent=True) or {}
+    data = parse_json_object()
     return jsonify(user_service.regenerate_apikey(email, data.get("expires"))), 200
 
 
 @user_crud_router.route("/users/<email>/apikey", methods=["PATCH"])
 @require_same_user
 def update_apikey_expiration(email: str) -> tuple[Response, int]:
-    data = request.get_json(silent=True) or {}
+    data = parse_json_object()
     return jsonify(user_service.update_apikey_expiration(email, data.get("expires"))), 200
 
 
