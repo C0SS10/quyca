@@ -18,6 +18,10 @@ class NotEntityException(Exception):
     pass
 
 
+class ObservatoryNotLoadedException(Exception):
+    """The observatory tables (obs_bundle, obs_corte) have no data for the request yet. HTTP 503."""
+
+
 class ProjectFileException(Exception):
     """Archive of projects cannot be read (extension, unreadable content or without headers)."""
 
