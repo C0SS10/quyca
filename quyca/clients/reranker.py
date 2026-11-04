@@ -7,7 +7,7 @@ from quyca.exceptions import RerankerUnavailableException
 
 
 def is_available() -> bool:
-    """True when the reranker service answers its health check within 1 second (cheap enough to call on every phase-1 request)."""
+    """Whether the reranker answers its health check within one second, cheap enough for every first-phase request."""
     if not settings.RERANKER_URL:
         return False
     try:
@@ -17,12 +17,10 @@ def is_available() -> bool:
 
 
 def rerank(seed_text: str, documents: list[dict], started_at: float) -> tuple[list[str], bool]:
-    """Sends the seed and the documents ({"topic_id", "text"}) to the reranker service and returns the topic ids from best to worst,
-    plus whether the service had to cut the seed to fit its context (`seed_truncated`).
+    """The topic ids of `documents` ({"topic_id", "text"}) from best to worst, and whether the service cut the seed.
 
-    The service keeps a FIFO queue, so the call may wait for earlier requests; the whole petition (queue included) is limited to
-    RERANKER_TIMEOUT_S seconds counted from `started_at` (time.monotonic()). The score of the reranker is not returned (D-090).
-    Raises RerankerUnavailableException when the service is off, fails or takes too long.
+    The service queues the requests, so the whole call, queue included, has RERANKER_TIMEOUT_S seconds counted from
+    `started_at` (time.monotonic()). Raises RerankerUnavailableException when the service is off, fails or is late.
     """
     if not settings.RERANKER_URL:
         raise RerankerUnavailableException("RERANKER_URL is not configured.")
@@ -30,17 +28,13 @@ def rerank(seed_text: str, documents: list[dict], started_at: float) -> tuple[li
     if remaining <= 0:
         raise RerankerUnavailableException("Time limit exceeded.")
     try:
-        resp = requests.post(
+        response = requests.post(
             f"{settings.RERANKER_URL}/rerank",
-            json={
-                "seed_text": seed_text,
-                "documents": documents,
-                "timeout_s": remaining,
-            },
+            json={"seed_text": seed_text, "documents": documents, "timeout_s": remaining},
             timeout=remaining + 2,
         )
-        resp.raise_for_status()
-        body = resp.json()
-        return [str(item["topic_id"]) for item in body["results"]], bool(body.get("seed_truncated", False))
+        response.raise_for_status()
+        data = response.json()
+        return [str(item["topic_id"]) for item in data["results"]], bool(data.get("seed_truncated", False))
     except (requests.RequestException, KeyError, ValueError) as e:
-        raise RerankerUnavailableException(str(e))
+        raise RerankerUnavailableException(str(e)) from e
