@@ -8,7 +8,13 @@ from quyca.services import theme_service
 
 def _topics(n: int) -> list[CurationTopic]:
     return [
-        CurationTopic(topic_id=str(i), name=f"topic {i}", keywords="k", summary="s", similarity_score=1 - i / 1000)
+        CurationTopic(
+            topic_id=str(i),
+            name=f"topic {i}",
+            keywords="k",
+            summary="s",
+            similarity_score=1 - i / 1000,
+        )
         for i in range(1, n + 1)
     ]
 
@@ -28,22 +34,38 @@ def test_candidates_phase_one_returns_rank_and_availability(client: FlaskClient,
 
     assert response.status_code == 200
     body = response.get_json()
-    assert body["total_results"] == 120
+    assert body["meta"] == {"count": 120}
+    assert "total_results" not in body
     assert body["reranking_available"] is True
     assert [c["rank"] for c in body["data"]] == list(range(1, 121))
     assert all(c["rank"] == c["cosine_rank"] for c in body["data"])
 
 
 def test_rerank_reorders_without_exposing_the_reranker_score(client: FlaskClient, monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setattr(theme_service.theme_repository, "get_topics_with_cosine", lambda seed, ids: _topics(3))
-    monkeypatch.setattr(theme_service.reranker, "rerank", lambda seed, docs, started_at: (["3", "1", "2"], True))
+    monkeypatch.setattr(
+        theme_service.theme_repository,
+        "get_topics_with_cosine",
+        lambda seed, ids: _topics(3),
+    )
+    monkeypatch.setattr(
+        theme_service.reranker,
+        "rerank",
+        lambda seed, docs, started_at: (["3", "1", "2"], True),
+    )
 
-    response = client.post("/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2", "3"]})
+    response = client.post(
+        "/theme/candidates/rerank",
+        json={"seed_text": "seed", "topic_ids": ["1", "2", "3"]},
+    )
 
     assert response.status_code == 200
     assert response.get_json()["seed_truncated"] is True
     data = response.get_json()["data"]
-    assert [(c["topic_id"], c["rank"], c["cosine_rank"]) for c in data] == [("3", 1, 3), ("1", 2, 1), ("2", 3, 2)]
+    assert [(c["topic_id"], c["rank"], c["cosine_rank"]) for c in data] == [
+        ("3", 1, 3),
+        ("1", 2, 1),
+        ("2", 3, 2),
+    ]
     assert all("score" not in c and "reranker_score" not in c for c in data)
 
 
@@ -51,7 +73,11 @@ def test_rerank_returns_503_when_the_service_is_unavailable(client: FlaskClient,
     def down(seed: str, docs: list, started_at: float) -> list[str]:
         raise RerankerUnavailableException("down")
 
-    monkeypatch.setattr(theme_service.theme_repository, "get_topics_with_cosine", lambda seed, ids: _topics(2))
+    monkeypatch.setattr(
+        theme_service.theme_repository,
+        "get_topics_with_cosine",
+        lambda seed, ids: _topics(2),
+    )
     monkeypatch.setattr(theme_service.reranker, "rerank", down)
 
     response = client.post("/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2"]})

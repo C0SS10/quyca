@@ -4,7 +4,12 @@ import uuid
 from pydantic import ValidationError
 
 from quyca.exceptions import RerankerUnavailableException
-from quyca.models.theme_model import Theme, ThemeTopic, ThemeTopicMethod, ThemeTopicStatus
+from quyca.models.theme_model import (
+    Theme,
+    ThemeTopic,
+    ThemeTopicMethod,
+    ThemeTopicStatus,
+)
 from quyca import reranker
 from quyca.repositories import theme_repository
 
@@ -14,15 +19,21 @@ _UNKNOWN_TOPIC_MESSAGE = "topic_id {topic_id} does not exist in the topic catalo
 RERANK_MAX_TOPICS = 120  # D-097: the list of phase 1 has 120 topics
 
 
+def _list_response(data: list, **extra: object) -> dict:
+    """Shape of every list of the tool (D-103): the total in `meta.count`, the items in `data`, and any extra flag
+    (`truncated`, `reranking_available`, `seed_truncated`) at the root. No page, size or cursor: the tool does not paginate.
+    """
+    return {"meta": {"count": len(data)}, "data": data, **extra}
+
+
 def get_candidates(seed_text: str, top_n: int = RERANK_MAX_TOPICS) -> dict:
     """FR3-FR5. Phase 1 of 2 (D-097): the list by cosine, plus whether the reranker of phase 2 is reachable."""
     candidates, truncated = theme_repository.get_candidates(seed_text, top_n=top_n)
-    return {
-        "data": [c.model_dump() for c in candidates],
-        "total_results": len(candidates),
-        "truncated": truncated,
-        "reranking_available": reranker.is_available(),
-    }
+    return _list_response(
+        [c.model_dump() for c in candidates],
+        truncated=truncated,
+        reranking_available=reranker.is_available(),
+    )
 
 
 def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
@@ -47,13 +58,13 @@ def rerank_candidates(seed_text: str, topic_ids: list[str]) -> dict:
         topic = by_id[topic_id]
         topic.rank, topic.cosine_rank = position, cosine_rank[topic_id]
         result.append(topic.model_dump())
-    return {"data": result, "total_results": len(result), "seed_truncated": seed_truncated}
+    return _list_response(result, seed_truncated=seed_truncated)
 
 
 def search_topics(query_text: str, limit: int = 50) -> dict:
     """FR8: búsqueda manual en el catálogo completo."""
     topics = theme_repository.search_topics(query_text, limit=limit)
-    return {"data": [t.model_dump() for t in topics], "total_results": len(topics)}
+    return _list_response([t.model_dump() for t in topics])
 
 
 def create_theme(name: str, description: str | None, seed_text: str, curator: str) -> dict:
@@ -97,7 +108,7 @@ def list_themes() -> dict:
     sola consulta en el repositorio, no con un round-trip por eje."""
     themes_with_summary = theme_repository.list_themes()
     data = [{**theme.model_dump(), "summary": summary} for theme, summary in themes_with_summary]
-    return {"data": data, "total_results": len(data)}
+    return _list_response(data)
 
 
 def classify_topic(
@@ -160,7 +171,12 @@ def classify_topics_bulk(theme_id: str, topics: list[dict]) -> dict:
 
     for item in topics:
         if not isinstance(item, dict):
-            failed_out.append({"topic_id": None, "error": "cada elemento de 'topics' debe ser un objeto."})
+            failed_out.append(
+                {
+                    "topic_id": None,
+                    "error": "cada elemento de 'topics' debe ser un objeto.",
+                }
+            )
             continue
 
         topic_id = item.get("topic_id")
@@ -217,4 +233,4 @@ def export_theme(theme_id: str) -> dict:
     eventual sistema de trayectorias."""
     theme_repository.get_theme_by_id(theme_id)  # NotEntityException si no existe
     rows = theme_repository.get_theme_topics_for_export(theme_id)
-    return {"data": rows, "total_results": len(rows)}
+    return _list_response(rows)
