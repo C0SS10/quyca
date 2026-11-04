@@ -24,7 +24,7 @@ def test_candidates_phase_one_returns_rank_and_availability(client: FlaskClient,
     monkeypatch.setattr(theme_service.theme_repository, "get_candidates", _fake_candidates)
     monkeypatch.setattr(theme_service.reranker, "is_available", lambda: True)
 
-    response = client.post("/app/theme/candidates", json={"seed_text": "seed"})
+    response = client.post("/theme/candidates", json={"seed_text": "seed"})
 
     assert response.status_code == 200
     body = response.get_json()
@@ -38,7 +38,7 @@ def test_rerank_reorders_without_exposing_the_reranker_score(client: FlaskClient
     monkeypatch.setattr(theme_service.theme_repository, "get_topics_with_cosine", lambda seed, ids: _topics(3))
     monkeypatch.setattr(theme_service.reranker, "rerank", lambda seed, docs, started_at: (["3", "1", "2"], True))
 
-    response = client.post("/app/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2", "3"]})
+    response = client.post("/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2", "3"]})
 
     assert response.status_code == 200
     assert response.get_json()["seed_truncated"] is True
@@ -54,7 +54,7 @@ def test_rerank_returns_503_when_the_service_is_unavailable(client: FlaskClient,
     monkeypatch.setattr(theme_service.theme_repository, "get_topics_with_cosine", lambda seed, ids: _topics(2))
     monkeypatch.setattr(theme_service.reranker, "rerank", down)
 
-    response = client.post("/app/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2"]})
+    response = client.post("/theme/candidates/rerank", json={"seed_text": "seed", "topic_ids": ["1", "2"]})
 
     assert response.status_code == 503
     assert response.get_json()["code"] == "reranker_unavailable"
@@ -70,4 +70,4 @@ def test_rerank_validates_the_request(client: FlaskClient) -> None:
         {"seed_text": "seed", "topic_ids": [1, 2]},
     ]
     for body in invalid_bodies:
-        assert client.post("/app/theme/candidates/rerank", json=body).status_code == 400
+        assert client.post("/theme/candidates/rerank", json=body).status_code == 400

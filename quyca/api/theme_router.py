@@ -68,7 +68,7 @@ def _int_in_range(value: object, name: str, minimum: int, maximum: int) -> int:
 
 
 """
-@api {post} /app/theme/candidates Get topic candidates for a seed
+@api {post} /theme/candidates Get topic candidates for a seed
 @apiName GetCandidates
 @apiGroup Theme
 @apiVersion 1.1.0
@@ -98,7 +98,7 @@ def get_candidates() -> Response | Tuple[Response, int]:
 
 
 """
-@api {post} /app/theme/candidates/rerank Reorder the candidates with the reranker
+@api {post} /theme/candidates/rerank Reorder the candidates with the reranker
 @apiName RerankCandidates
 @apiGroup Theme
 @apiVersion 1.1.0
@@ -143,7 +143,7 @@ def rerank_candidates() -> Response | Tuple[Response, int]:
 
 
 """
-@api {get} /app/theme/search Search topics manually
+@api {get} /theme/search Search topics manually
 @apiName SearchTopics
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -171,7 +171,7 @@ def search_topics() -> Response | Tuple[Response, int]:
 
 
 """
-@api {post} /app/theme Create a theme
+@api {post} /theme Create a theme
 @apiName CreateTheme
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -206,7 +206,7 @@ def create_theme() -> Response | Tuple[Response, int]:
 
 
 """
-@api {get} /app/theme List themes
+@api {get} /theme List themes
 @apiName ListThemes
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -224,7 +224,7 @@ def list_themes() -> Response | Tuple[Response, int]:
 
 
 """
-@api {get} /app/theme/:theme_id Get theme detail
+@api {get} /theme/:theme_id Get theme detail
 @apiName GetTheme
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -247,7 +247,7 @@ def get_theme(theme_id: str) -> Response | Tuple[Response, int]:
 
 
 """
-@api {patch} /app/theme/:theme_id/topics/:topic_id Classify a candidate topic
+@api {patch} /theme/:theme_id/topics/:topic_id Classify a candidate topic
 @apiName ClassifyTopic
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -288,12 +288,12 @@ def classify_topic(theme_id: str, topic_id: str) -> Response | Tuple[Response, i
 
 
 """
-@api {post} /app/theme/:theme_id/topics Add a manually found topic
+@api {post} /theme/:theme_id/topics Add a manually found topic
 @apiName AddManualTopic
 @apiGroup Theme
 @apiVersion 1.0.0
 @apiDescription FR9. Agrega al eje un tópico encontrado por búsqueda
-manual (/app/theme/search). Mismo mecanismo que classify_topic, con
+manual (/theme/search). Mismo mecanismo que classify_topic, con
 method='manual' y sin similarity_score.
 
 @apiParam {String} theme_id ID del eje.
@@ -329,7 +329,7 @@ def add_manual_topic(theme_id: str) -> Response | Tuple[Response, int]:
 
 
 """
-@api {post} /app/theme/:theme_id/topics/bulk Classify topics in bulk
+@api {post} /theme/:theme_id/topics/bulk Classify topics in bulk
 @apiName ClassifyTopicsBulk
 @apiGroup Theme
 @apiVersion 1.0.0
@@ -366,7 +366,7 @@ def classify_topics_bulk(theme_id: str) -> Response | Tuple[Response, int]:
 
 
 """
-@api {get} /app/theme/:theme_id/export Export theme topics
+@api {get} /theme/:theme_id/export Export theme topics
 @apiName ExportTheme
 @apiGroup Theme
 @apiVersion 1.0.0

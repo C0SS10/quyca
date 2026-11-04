@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     MONGO_CALCULATIONS_DATABASE: str
     MONGO_IMPACTU_DATABASE: str
 
-    # Topic curation tool (optional): without CLICKHOUSE_SERVER the /app/theme routes answer 503 and the rest of the API runs normally.
+    # Topic curation tool (optional): without CLICKHOUSE_SERVER the /theme routes answer 503 and the rest of the API runs normally.
     CLICKHOUSE_SERVER: str = ""
     CLICKHOUSE_PORT: int = 8123
     CLICKHOUSE_USER: str = ""

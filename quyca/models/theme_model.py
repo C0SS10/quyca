@@ -62,7 +62,7 @@ class ThemeTopic(BaseModel):
 
 
 class ThemeTopicDetail(ThemeTopic):
-    """A classified topic as `GET /app/theme/<theme_id>` returns it: the
+    """A classified topic as `GET /theme/<theme_id>` returns it: the
     classification plus the catalog fields of the topic, flat and named like
     `CurationTopic` (D-009). The topic fields are None when the `topic_id` is
     not in the catalog (LEFT JOIN). `similarity_score` stays the one of the

@@ -35,7 +35,7 @@ router.register_blueprint(user_auth_router)
 router.register_blueprint(me_router)
 router.register_blueprint(user_crud_router)
 router.register_blueprint(submit_router, url_prefix="/submit")
-router.register_blueprint(theme_router, url_prefix="/app/theme")
+router.register_blueprint(theme_router, url_prefix="/theme")
 
 router.register_blueprint(info_router)
 router.register_blueprint(ping_router)
