@@ -53,6 +53,7 @@ def test_the_cut_is_a_dict_of_the_newest_load(clickhouse: MagicMock) -> None:
 
     cut = observatory_repository.get_cut()
 
+    assert cut is not None
     assert cut["load_id"] == 20261104 and cut["etl_hasta"] == "2026-10-16"
     assert "ORDER BY load_id DESC LIMIT 1" in clickhouse.query.call_args.args[0]
 
