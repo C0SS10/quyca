@@ -9,16 +9,18 @@ def group_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         key = (str(col), str(detail))
         if key not in grouped:
-            grouped[key] = {"detalle": detail, "fila": []}
+            grouped[key] = {"detalle": detail, "fila": [], "total_filas": 0}
         if row is not None:
             grouped[key]["fila"].append(row)
+        # A file-level error (no row) states how many rows it covers.
+        grouped[key]["total_filas"] += 1 if row is not None else e.get("total_filas", 0)
 
     return [
         {
             "columna": col,
             "detalle": info["detalle"],
             "ejemplos": info["fila"][:3],
-            "total_filas": len(info["fila"]),
+            "total_filas": info["total_filas"],
         }
         for (col, _), info in grouped.items()
     ]
