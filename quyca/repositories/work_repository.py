@@ -1,3 +1,4 @@
+import re
 from typing import Generator
 
 
@@ -24,10 +25,16 @@ def get_work_by_id(work_id: str, pipeline_params: dict | None = None) -> Work:
 
 
 def get_work_by_doi(work_doi: str, pipeline_params: dict | None = None) -> Generator:
-    pipeline = [{"$match": {"doi": work_doi}}]
+    pipeline = [{"$match": {"doi": normalize_doi(work_doi)}}]
     base_repository.set_project(pipeline, (pipeline_params or {}).get("project"))
     cursor = database["works"].aggregate(pipeline)
     return work_generator.get(cursor)
+
+
+def normalize_doi(work_doi: str) -> str:
+    """Works store the DOI as a lowercase https://doi.org/ URL; accept it bare, with doi: or as any doi.org URL."""
+    bare_doi = re.sub(r"^((https?://)?(dx\.)?doi\.org/|doi:\s*)", "", work_doi.strip(), flags=re.IGNORECASE)
+    return "https://doi.org/" + bare_doi.lower()
 
 
 def _works_match(match: dict, query_params: QueryParams) -> list[dict]:
