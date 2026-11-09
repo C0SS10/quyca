@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import List, Dict, Any
 from zoneinfo import ZoneInfo
 
+from quyca.validators.base_validator import excel_row_index
+
 
 def generate_quality_report(
     errors: List[Dict[str, Any]],
@@ -378,14 +380,15 @@ def generate_quality_report(
 
 def generate_quality_report_ciarp(
     errors: List[Dict[str, Any]],
-    warnings: Dict[str, Any],
+    warnings: List[Dict[str, Any]],
     duplicados: List[Dict[str, Any]] | None,
     institution: str,
     filename: str,
     upload_date: str,
     user: str,
+    duplicate_columns: List[str] | None = None,
 ) -> io.BytesIO:
-    """Generates the CIARP PDF report (with warnings summary)."""
+    """Generates the CIARP PDF report from grouped errors and warnings, plus duplicates and the columns compared."""
     institution, filename, user = (html_lib.escape(str(value)) for value in (institution, filename, user))
     report_date = datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y %H:%M")
 
@@ -413,9 +416,6 @@ def generate_quality_report_ciarp(
                     <tr><td>código_subunidad_académica</td><td>Código único de la subunidad académica si existe (si no
                     tiene un código asignado, se le debe asignar y nunca se
                     debe cambiar en futuras actualizaciones)</td></tr>
-                    <tr><td>tipo_documento</td><td>Cédula de ciudadanía, cédula de extranjería, pasaporte
-                    (Si hay otro tipo, informar para reorganizar el estándar
-                    de este formato)</td></tr>
                     <tr><td>identificación</td><td>Del autor</td></tr>
                     <tr><td>año</td><td>Del producto</td></tr>
                     <tr><td>título</td><td>Del producto</td></tr>
@@ -546,8 +546,9 @@ def generate_quality_report_ciarp(
                     <table>
                         <tr>
                             <th>Columna</th>
-                            <th>Detalle</th> 
+                            <th>Detalle</th>
                             <th>Número de filas con el error</th>
+                            <th>Filas de ejemplo en Excel</th>
                         </tr>
             """
 
@@ -555,35 +556,57 @@ def generate_quality_report_ciarp(
             columna_e = html_lib.escape(str(err.get("columna", "")))
             detalle_e = html_lib.escape(str(err.get("detalle", "")))
             total_e = err.get("total_filas", 0)
+            # A column-level error has no example rows: it covers every row.
+            example_rows = ", ".join(str(excel_row_index(int(row))) for row in err.get("ejemplos", [])) or "Todas"
             html += f"""
                     <tr>
                         <td> {columna_e} </td>
                         <td> {detalle_e} </td>
                         <td> {total_e} </td>
+                        <td> {example_rows} </td>
                     </tr>
                 """
 
         html += "</table>"
     if warnings:
-        total_adv = int(warnings.get("total_advertencias", 0))
-        html += f"""
-                <h3>Advertencias</h3>
-                <p><strong>Total de advertencias:</strong> {total_adv}</p>
+        html += """
+                <h2><li> Advertencias Encontradas</li></h2>
+                <table>
+                    <tr>
+                        <th>Columna</th>
+                        <th>Detalle</th>
+                        <th>Valor</th>
+                        <th>Número de filas con la advertencia</th>
+                    </tr>
             """
 
+        for warn in warnings:
+            columna_w = html_lib.escape(str(warn.get("columna", "")))
+            detalle_w = html_lib.escape(str(warn.get("detalle", "")))
+            valor_w = html_lib.escape(str(warn.get("valor", "")))
+            total_w = warn.get("total_filas", 0)
+            html += f"""
+                    <tr>
+                        <td> {columna_w} </td>
+                        <td> {detalle_w} </td>
+                        <td> {valor_w} </td>
+                        <td> {total_w} </td>
+                    </tr>
+                """
+        html += "</table>"
+
     if duplicados and len(duplicados) > 0:
-        html += f"<h2><li>Duplicados</li></h2><p>Se detectaron {len(duplicados)} registros duplicados.</p>"
-        eje = duplicados[:2]
+        compared = html_lib.escape(", ".join(duplicate_columns or []))
+        html += (
+            f"<h2><li>Duplicados</li></h2><p>Se detectaron {len(duplicados)} registros duplicados: filas que repiten "
+            f"exactamente los mismos valores en las columnas comparadas ({compared}).</p>"
+        )
         html += "<p><b>Ejemplo de duplicados:</b></p><ul>"
-        for dup in eje:
+        for dup in duplicados[:2]:
             row = dup.get("row") or {}
             preview = {
-                "identificación": row.get("identificación"),
-                "primer_apellido": row.get("primer_apellido"),
-                "nombres": row.get("nombres"),
-                "jornada_laboral": row.get("jornada_laboral"),
-                "....": "....",
-                "unidad_académica": row.get("unidad_académica"),
+                "fila_excel": dup.get("index_excel"),
+                **{column: row.get(column) for column in ("identificación", "año", "título", "doi")},
             }
             html += f"<li>{html_lib.escape(str(preview))}</li>"
         html += "</ul>"

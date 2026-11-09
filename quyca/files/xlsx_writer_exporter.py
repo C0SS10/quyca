@@ -1,7 +1,28 @@
 import io
 from typing import Any
 import pandas as pd
+from werkzeug.datastructures import FileStorage
 from xlsxwriter.utility import xl_col_to_name
+
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
+    """Converts a DataFrame to an in-memory .xlsx FileStorage, ready to save as an upload."""
+    df_to_save = df.copy()
+    artifact_cols = [
+        col
+        for col in df_to_save.columns
+        if str(col).strip().lower().startswith("unnamed") or str(col).strip().lower() == "index"
+    ]
+    if artifact_cols:
+        df_to_save = df_to_save.drop(columns=artifact_cols)
+
+    # In memory: the filename comes from the upload, and a '/' in it broke the old /tmp path.
+    buffer = io.BytesIO()
+    df_to_save.to_excel(buffer, index=False, engine="openpyxl")
+    buffer.seek(0)
+    return FileStorage(stream=buffer, filename=filename, content_type=XLSX_MIME)
 
 
 def to_excel_bytes(df: pd.DataFrame) -> io.BytesIO:
