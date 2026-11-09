@@ -1,12 +1,14 @@
 from datetime import datetime
 import re
 from typing import Any, Dict, Optional
+from quyca.validators import base_validator
 
 _INTEGER_TEXT_RE = re.compile(r"^[0-9]+(?:\.0+)?$")
 
 
 def validate(value: Any, field: str, index: int) -> Optional[Dict[str, Any]]:
-    if value is None or str(value).strip() == "":
+    # An empty cell arrives as NaN; the required-fields validator already reports it.
+    if base_validator.is_empty(value):
         return None
     try:
         if isinstance(value, str):

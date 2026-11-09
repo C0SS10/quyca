@@ -1,9 +1,8 @@
 from typing import List, Dict, Any
 from quyca.validators import base_validator
 
+# código_unidad_académica is optional (an empty one is only a warning) and tipo_documento left the template.
 REQUIRED_FIELDS_CIARP = [
-    "código_unidad_académica",
-    "tipo_documento",
     "identificación",
     "año",
     "título",

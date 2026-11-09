@@ -20,7 +20,7 @@ def _is_numeric_identification(value: Any) -> bool:
     return bool(_INTEGER_TEXT_RE.match(normalized))
 
 
-def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[str, Any]]:
+def validate(tipo_documento: Any, identificacion: Any, index: int) -> List[Dict[str, Any]]:
     errors: List[Dict[str, Any]] = []
 
     if not base_validator.is_empty(tipo_documento):
