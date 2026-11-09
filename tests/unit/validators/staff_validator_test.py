@@ -122,3 +122,44 @@ def test_findings_point_to_the_row_of_the_original_sheet() -> None:
     report = staff_validator.validate_dataframe(df)
 
     assert {error["fila"] for error in report.errors} == {0, 2}
+
+
+def test_identifier_columns_are_optional() -> None:
+    columns = list(staff_validator.REQUIRED_COLUMNS)
+
+    valid, errors, _ = staff_validator.validate_columns(pd.DataFrame(columns=columns))
+
+    assert (valid, errors) == (True, [])
+    assert not {"orcid", "cvlac", "scholar"} & set(columns)
+
+
+def test_missing_or_partly_empty_identifiers_give_one_warning_per_column() -> None:
+    df = pd.DataFrame(
+        {"tipo_documento": ["x", "x", "x"], "orcid": ["0000-0001-2345-6789", None, ""], "cvlac": ["1", "2", "3"]}
+    )
+
+    report = staff_validator.validate_dataframe(df)
+
+    identifier_warnings = [w for w in report.grouped_warnings if w["columna"] in {"orcid", "cvlac", "scholar"}]
+    assert [(w["columna"], w["valor"], w["total_filas"]) for w in identifier_warnings] == [
+        ("orcid", "2 filas vacías", 2),
+        ("scholar", "Columna ausente", 3),
+    ]
+    assert identifier_warnings[0]["detalle"].startswith("El archivo no contiene la columna orcid, o algunos")
+    assert report.total_errors == len(report.errors)
+
+
+def test_rows_that_differ_only_in_nombre_completo_or_orcid_are_not_duplicates() -> None:
+    row = {"tipo_documento": "cédula de ciudadanía", "identificación": 1, "unidad_académica": "Medicina"}
+    df = pd.DataFrame(
+        [
+            {**row, "nombre_completo": "Ana Pérez", "orcid": "a"},
+            {**row, "nombre_completo": "Luis Pérez", "orcid": "a"},
+            {**row, "nombre_completo": "Ana Pérez", "orcid": "b"},
+            {**row, "nombre_completo": "Ana Pérez", "orcid": "a"},
+        ]
+    )
+
+    report = staff_validator.validate_dataframe(df)
+
+    assert [duplicate["index"] for duplicate in report.duplicates] == [0, 3]
