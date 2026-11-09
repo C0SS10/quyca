@@ -12,12 +12,11 @@ from quyca.validators import error_grouper, staff_validator
 from quyca.validators.staff_validator import STAFF_COLUMNS
 from quyca.files import annotator
 from quyca.files import xlsx_writer_exporter
+from quyca.files.xlsx_writer_exporter import XLSX_MIME
 from quyca.security import jwt_token_service
 from quyca.services import notification_service
 from quyca.files import pdf_report
 from quyca.repositories import file_repository
-
-XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def handle_staff_upload(file: FileStorage, claims: dict[str, Any], upload_date: str) -> tuple[dict, int]:
@@ -283,7 +282,7 @@ def save_staff_files(
         raise ValueError("institution es requerida")
 
     result_original = file_repository.save_file(
-        _dataframe_to_filestorage(df_original, original_filename),
+        xlsx_writer_exporter.to_filestorage(df_original, original_filename),
         ror_id,
         institution,
         file_type="staff",
@@ -291,7 +290,7 @@ def save_staff_files(
     )
 
     result_normalized = file_repository.save_file(
-        _dataframe_to_filestorage(df_normalized, original_filename),
+        xlsx_writer_exporter.to_filestorage(df_normalized, original_filename),
         ror_id,
         institution,
         file_type="staff",
@@ -306,21 +305,3 @@ def save_staff_files(
 
 def _has_nombre_completo(df: pd.DataFrame) -> bool:
     return any(str(column).strip().lower().replace(" ", "_") == "nombre_completo" for column in df.columns)
-
-
-def _dataframe_to_filestorage(df: pd.DataFrame, filename: str) -> FileStorage:
-    """Converts a DataFrame to an in-memory .xlsx FileStorage."""
-    df_to_save = df.copy()
-    artifact_cols = [
-        col
-        for col in df_to_save.columns
-        if str(col).strip().lower().startswith("unnamed") or str(col).strip().lower() == "index"
-    ]
-    if artifact_cols:
-        df_to_save = df_to_save.drop(columns=artifact_cols)
-
-    # In memory: the filename comes from the upload, and a '/' in it broke the old /tmp path.
-    buffer = io.BytesIO()
-    df_to_save.to_excel(buffer, index=False, engine="openpyxl")
-    buffer.seek(0)
-    return FileStorage(stream=buffer, filename=filename, content_type=XLSX_MIME)
