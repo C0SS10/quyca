@@ -4,20 +4,23 @@ import pandas as pd
 from quyca.models.staff_report_model import StaffReport
 from quyca.normalizers.text_normalizer import normalize_key
 from quyca.validators import ciarp_required_fields_validator
-from quyca.validators import document_validator
 from quyca.validators import base_validator
 from quyca.validators import year_validator
 from quyca.validators import language_validator
 from quyca.validators import country_validator
 from quyca.validators import unit_validator
 from quyca.validators import error_grouper
+from quyca.validators.ciarp_required_fields_validator import REQUIRED_FIELDS_CIARP
 
+# Optional columns whose empty cells are reported once per column, as a warning.
 WARNING_EMPTY_FIELDS = ["código_unidad_académica", "ranking"]
+
+# Columns that left the template: when a file still has them they are dropped, never validated nor saved.
+REMOVED_COLUMNS = ["tipo_documento"]
 
 REQUIRED_COLUMNS = [
     "código_unidad_académica",
     "código_subunidad_académica",
-    "tipo_documento",
     "identificación",
     "año",
     "título",
@@ -108,9 +111,6 @@ def validate_row(row: dict, index: int) -> Dict[str, List[Dict[str, Any]]]:
         return {"errors": [], "warnings": []}
 
     errors.extend(ciarp_required_fields_validator.validate(row, index))
-    tipo_documento = str(row.get("tipo_documento") or "").strip()
-    identificacion = str(row.get("identificación") or "").strip()
-    errors.extend(document_validator.validate(tipo_documento, identificacion, index))
 
     year_err = year_validator.validate(row.get("año"), "año", index)
     if year_err:
@@ -121,19 +121,49 @@ def validate_row(row: dict, index: int) -> Dict[str, List[Dict[str, Any]]]:
 
     errors.extend(unit_validator.validate(row, index))
 
+    return {"errors": errors, "warnings": warnings}
+
+
+def _thousands(count: int) -> str:
+    return f"{count:,}".replace(",", ".")
+
+
+def _empty_column_findings(df: pd.DataFrame) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[str]]:
+    """One finding per column instead of one per row: (errors, warnings, required columns empty in every row)."""
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+    rows = len(df)
+
+    def empty_rows(field: str) -> int:
+        return int(df[field].map(base_validator.is_empty).sum()) if field in df.columns else rows
+
+    fully_empty = [field for field in REQUIRED_FIELDS_CIARP if rows and empty_rows(field) == rows]
+    for field in fully_empty:
+        errors.append(
+            {
+                "fila": None,
+                "columna": field,
+                "detalle": f"La columna {field} es obligatoria y está vacía en todas las filas ({_thousands(rows)}). "
+                "Cada archivo debe incluirla completa; no se toma del archivo de Staff.",
+                "valor": "Vacío",
+                "total_filas": rows,
+            }
+        )
+
     for field in WARNING_EMPTY_FIELDS:
-        value = row.get(field)
-        if base_validator.is_empty(value):
+        count = empty_rows(field)
+        if count:
             warnings.append(
                 {
-                    "fila": index,
+                    "fila": None,
                     "columna": field,
-                    "detalle": f"El campo '{field}' está vacío.",
+                    "detalle": f"La columna {field} está vacía en {_thousands(count)} filas",
                     "valor": "",
+                    "total_filas": count,
                 }
             )
 
-    return {"errors": errors, "warnings": warnings}
+    return errors, warnings, fully_empty
 
 
 def validate_dataframe(df: pd.DataFrame) -> StaffReport:
@@ -149,9 +179,15 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
         if field in df.columns:
             df[field] = df[field].apply(_coerce_integer_like)
 
+    column_errors, column_warnings, fully_empty = _empty_column_findings(df)
+    errors.extend(column_errors)
+    warnings.extend(column_warnings)
+
     for idx, row in df.iterrows():
         result = validate_row(row.to_dict(), idx)
-        errors.extend(result["errors"])
+        # Every cell of a fully empty column is empty, so its only row errors are the "Campo obligatorio vacío"
+        # already summed up by the column error.
+        errors.extend(error for error in result["errors"] if error["columna"] not in fully_empty)
         warnings.extend(result["warnings"])
 
     dedupe_cols = [c for c in df.columns if c in REQUIRED_COLUMNS]
@@ -181,4 +217,5 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
         warnings=warnings,
         grouped_warnings=error_grouper.group_warnings(warnings),
         duplicates=duplicate_info,
+        duplicate_columns=dedupe_cols,
     )

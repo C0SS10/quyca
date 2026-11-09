@@ -118,10 +118,8 @@ def validate_row(row: dict, index: int) -> dict:
 
     errors.extend(staff_required_fields_validator.validate(row, index))
 
-    document_type: str = str(row.get("tipo_documento"))
-    identification: str = str(row.get("identificación"))
-
-    errors.extend(document_validator.validate(document_type, identification, index))
+    # Raw values: str() of an empty cell gives 'nan', which would add a second error to "Campo obligatorio vacío".
+    errors.extend(document_validator.validate(row.get("tipo_documento"), row.get("identificación"), index))
 
     errors.extend(name_validator.validate(row, index))
 

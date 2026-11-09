@@ -31,7 +31,7 @@ REPORTS: dict[str, Callable[..., io.BytesIO]] = {
     ),
     "ciarp": lambda **user_text: pdf_report.generate_quality_report_ciarp(
         ERRORS,
-        {"total_advertencias": 1},
+        WARNINGS,
         [],
         user_text["institution"],
         user_text["filename"],
@@ -51,6 +51,25 @@ def test_text_from_the_upload_is_escaped(rendered_html: list[str], report: Any) 
     assert "&lt;img" in html
     assert "<b>Universidad</b>" not in html
     assert "<i>staff</i>" not in html
+
+
+def test_the_ciarp_report_details_warnings_rows_and_duplicates_with_ciarp_columns(rendered_html: list[str]) -> None:
+    errors = [{"columna": "título", "detalle": "Campo obligatorio vacío", "ejemplos": [0, 5], "total_filas": 2}]
+    warnings = [
+        {"columna": "ranking", "detalle": "La columna ranking está vacía en 7 filas", "valor": "", "total_filas": 7}
+    ]
+    duplicates = [{"index": 3, "index_excel": 5, "row": {"identificación": 1, "año": 2020, "título": "T", "doi": "d"}}]
+
+    pdf_report.generate_quality_report_ciarp(
+        errors, warnings, duplicates, "U", "f.xlsx", "01/01/2026", "u", duplicate_columns=["identificación", "título"]
+    )
+
+    [html] = rendered_html
+    assert "<td> 2, 7 </td>" in html
+    assert "La columna ranking está vacía en 7 filas" in html
+    assert "columnas comparadas (identificación, título)" in html
+    assert "'fila_excel': 5, 'identificación': 1, 'año': 2020, 'título': 'T', 'doi': 'd'" in html.replace("&#x27;", "'")
+    assert "primer_apellido" not in html and "tipo_documento" not in html
 
 
 @pytest.mark.parametrize("report", REPORTS.values(), ids=REPORTS.keys())

@@ -2,13 +2,12 @@ import math
 from typing import Any
 import pandas as pd
 import pytest
-from quyca.validators import ciarp_validator
+from quyca.validators import ciarp_validator, staff_validator
 from quyca.validators.ciarp_validator import REQUIRED_COLUMNS
 
 VALID: dict[str, Any] = {
     "código_unidad_académica": "FAC01",
     "código_subunidad_académica": "DEP01",
-    "tipo_documento": "cédula de ciudadanía",
     "identificación": "1017234567",
     "año": "2020",
     "título": "Bioprospección en Antioquia",
@@ -62,7 +61,7 @@ class TestColumns:
         valid, errors, _ = ciarp_validator.validate_columns(df)
 
         assert valid is False
-        assert errors == ["Columna sin nombre en posición 20"]
+        assert errors == [f"Columna sin nombre en posición {len(REQUIRED_COLUMNS) + 1}"]
 
     @pytest.mark.parametrize("header", ["Unnamed: 0", "index", ""], ids=["unnamed", "index", "vacio"])
     def test_an_index_column_left_by_excel_is_skipped(self, header: str) -> None:
@@ -90,14 +89,6 @@ class TestRows:
         "changes, column, detail",
         [
             pytest.param({"título": None}, "título", "Campo obligatorio vacío", id="obligatorio-vacio"),
-            pytest.param({"tipo_documento": "licencia"}, "tipo_documento", "no es válido", id="tipo-de-documento"),
-            pytest.param({"identificación": "12A"}, "identificación", "contiene letras", id="cedula-con-letras"),
-            pytest.param(
-                {"tipo_documento": "pasaporte", "identificación": "AB-12"},
-                "identificación",
-                "Formato inválido para pasaporte",
-                id="pasaporte-con-guion",
-            ),
             pytest.param({"año": "3000"}, "año", "Año no válido", id="año-futuro"),
             pytest.param({"año": "dos mil"}, "año", "debe ser numérico", id="año-en-letras"),
             pytest.param({"código_unidad_académica": "FAC 01"}, "código_unidad_académica", "solo letras", id="codigo"),
@@ -113,7 +104,6 @@ class TestRows:
         [
             pytest.param({"idioma": "español"}, "idioma", id="idioma"),
             pytest.param({"pais_producto": "Colombia"}, "pais_producto", id="pais"),
-            pytest.param({"ranking": None}, "ranking", id="ranking-vacio"),
         ],
     )
     def test_warnings(self, changes: dict, column: str) -> None:
@@ -122,11 +112,18 @@ class TestRows:
         assert errors == []
         assert [found_column for found_column, _ in warnings] == [column]
 
-    def test_an_empty_unit_code_is_an_error_and_a_warning(self) -> None:
-        errors, warnings = _findings(**{"código_unidad_académica": None})
+    @pytest.mark.parametrize("value", ["licencia", "nan", None, float("nan")])
+    def test_tipo_documento_is_no_longer_validated(self, value: Any) -> None:
+        assert _findings(tipo_documento=value, identificación="AB-12") == ([], [])
 
-        assert errors == [("código_unidad_académica", "Campo obligatorio vacío")]
-        assert [column for column, _ in warnings] == ["código_unidad_académica"]
+    def test_an_empty_year_is_reported_once(self) -> None:
+        assert _findings(año=float("nan")) == ([("año", "Campo obligatorio vacío")], [])
+
+    def test_the_unit_code_is_checked_like_in_staff(self) -> None:
+        row = {**VALID, "código_unidad_académica": "FAC 01"}
+        staff_errors = [e for e in staff_validator.validate_row(row, 0)["errors"] if e["columna"].startswith("código")]
+
+        assert ciarp_validator.validate_row(row, 0)["errors"] == staff_errors
 
     @pytest.mark.parametrize("country", ["C_", "^^", "[]", "C1", "COL"])
     def test_a_country_must_be_two_letters(self, country: str) -> None:
@@ -198,3 +195,45 @@ class TestDataframe:
                 "total_filas": 2,
             }
         ]
+
+    def test_a_required_column_empty_in_every_row_is_one_error(self) -> None:
+        df = pd.DataFrame([{**VALID, "identificación": None}, {**VALID, "identificación": None, "título": "Otro"}])
+
+        report = ciarp_validator.validate_dataframe(df)
+
+        assert report.total_errors == 1
+        assert report.grouped_errors == [
+            {
+                "columna": "identificación",
+                "detalle": "La columna identificación es obligatoria y está vacía en todas las filas (2). "
+                "Cada archivo debe incluirla completa; no se toma del archivo de Staff.",
+                "ejemplos": [],
+                "total_filas": 2,
+            }
+        ]
+
+    def test_a_required_column_empty_in_some_rows_keeps_one_error_per_row(self) -> None:
+        df = pd.DataFrame([VALID, {**VALID, "título": None}, {**VALID, "título": None, "identificación": "2"}])
+
+        report = ciarp_validator.validate_dataframe(df)
+
+        assert report.grouped_errors == [
+            {"columna": "título", "detalle": "Campo obligatorio vacío", "ejemplos": [1, 2], "total_filas": 2}
+        ]
+
+    def test_empty_optional_columns_are_one_warning_per_column_and_never_an_error(self) -> None:
+        rows = [{**VALID, "código_unidad_académica": None, "ranking": None, "identificación": str(i)} for i in range(3)]
+
+        report = ciarp_validator.validate_dataframe(pd.DataFrame(rows))
+
+        assert report.total_errors == 0
+        assert [(w["columna"], w["detalle"], w["total_filas"]) for w in report.grouped_warnings] == [
+            ("código_unidad_académica", "La columna código_unidad_académica está vacía en 3 filas", 3),
+            ("ranking", "La columna ranking está vacía en 3 filas", 3),
+        ]
+
+    def test_the_report_names_the_columns_compared_for_duplicates(self) -> None:
+        report = ciarp_validator.validate_dataframe(pd.DataFrame([VALID, VALID]))
+
+        assert report.duplicate_columns == [column for column in REQUIRED_COLUMNS if column in VALID]
+        assert "tipo_documento" not in report.duplicate_columns

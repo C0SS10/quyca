@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 from quyca.models.staff_report_model import StaffReport
+from quyca.normalizers.text_normalizer import normalize_key
 from quyca.validators import ciarp_validator
 from quyca.files import annotator
 from quyca.files import xlsx_writer_exporter
@@ -31,8 +32,11 @@ def handle_ciarp_upload(file: Any, claims: dict[str, Any], upload_date: str) -> 
             return result, 422
         return result, 400
 
+    # Without removed columns the upload is saved byte for byte; with them, the processed copy that dropped them.
+    df_processed = result.pop("df_processed", None)
     file.stream.seek(0)
-    save_result = file_repository.save_file(file, ror_id, institution, "ciarp")
+    to_save = file if df_processed is None else xlsx_writer_exporter.to_filestorage(df_processed, file.filename)
+    save_result = file_repository.save_file(to_save, ror_id, institution, "ciarp")
     result.update({"file_msg": save_result.get("msg")})
 
     return result, 200
@@ -55,6 +59,9 @@ def process_ciarp_file(
             "success": False,
             "msg": f"Error al leer el archivo Excel: {str(e)}",
         }
+
+    removed = [c for c in df.columns if normalize_key(c).replace(" ", "_") in ciarp_validator.REMOVED_COLUMNS]
+    df = df.drop(columns=removed)
 
     pdf_base64: Optional[str] = None
 
@@ -112,13 +119,16 @@ def process_ciarp_file(
                 pdf_base64 = base64.b64encode(bytes_obj.read()).decode()
                 break
 
-    return {
+    result: Dict[str, Any] = {
         "success": report.total_errors == 0,
         "errors": report.total_errors,
         "warnings": len(report.warnings),
         "duplicates": report.total_duplicates,
         "pdf_base64": pdf_base64,
     }
+    if removed and result["success"]:
+        result["df_processed"] = df  # consumed by handle_ciarp_upload, never sent in the response
+    return result
 
 
 def generate_ciarp_report(
@@ -131,16 +141,15 @@ def generate_ciarp_report(
     pdf_bytes: io.BytesIO | None = None
 
     if ciarp_report.total_errors > 0 or len(ciarp_report.warnings) > 0 or ciarp_report.total_duplicates > 0:
-        advertencias_resumen = {"total_advertencias": len(ciarp_report.warnings)}
-
         pdf_bytes = pdf_report.generate_quality_report_ciarp(
             ciarp_report.grouped_errors,
-            advertencias_resumen,
+            ciarp_report.grouped_warnings,
             ciarp_report.duplicates,
             institution,
             filename,
             upload_date,
             user,
+            duplicate_columns=ciarp_report.duplicate_columns,
         )
 
         attachments = [{"bytes": pdf_bytes, "filename": "reporte_ciarp.pdf", "mime": "application/pdf"}]

@@ -124,6 +124,17 @@ def test_findings_point_to_the_row_of_the_original_sheet() -> None:
     assert {error["fila"] for error in report.errors} == {0, 2}
 
 
+def test_an_empty_document_type_or_identification_is_reported_once() -> None:
+    row = {"tipo_documento": float("nan"), "identificación": None, "primer_apellido": "Pérez", "nombres": "Ana"}
+
+    errors = staff_validator.validate_row(row, 0)["errors"]
+
+    assert [(e["columna"], e["detalle"]) for e in errors] == [
+        ("tipo_documento", "Campo obligatorio vacío"),
+        ("identificación", "Campo obligatorio vacío"),
+    ]
+
+
 def test_identifier_columns_are_optional() -> None:
     columns = list(staff_validator.REQUIRED_COLUMNS)
 

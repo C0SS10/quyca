@@ -30,7 +30,6 @@ USER_FOLDER = f"{ROR_ID}_Universidad-de-Antioquia"
 VALID_CIARP: dict[str, Any] = {
     "código_unidad_académica": "FAC01",
     "código_subunidad_académica": "DEP01",
-    "tipo_documento": "cédula de ciudadanía",
     "identificación": 1017234567,
     "año": 2020,
     "título": "Bioprospección en Antioquia",
@@ -105,6 +104,18 @@ class TestCiarp:
         assert saved.parent.name == USER_FOLDER
         assert saved.name.startswith(f"ciarp_{ROR_ID}_") and saved.suffix == ".xlsx"
         assert pd.read_excel(saved)["título"].tolist() == [VALID_CIARP["título"]]
+
+    def test_a_tipo_documento_column_is_dropped_without_findings(self, uploader: FlaskClient, storage: Path) -> None:
+        row = {**VALID_CIARP, "Tipo Documento": "licencia"}
+        response = _upload(uploader, self.PATH, _ciarp_xlsx([row], extra_headers=("Tipo Documento",)), "ciarp.xlsx")
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert (body["errors"], body["warnings"]) == (0, 0)
+        [saved] = _saved(storage, "ciarp")
+        saved_df = pd.read_excel(saved)
+        assert "Tipo Documento" not in saved_df.columns
+        assert saved_df["título"].tolist() == [VALID_CIARP["título"]]
 
     def test_row_errors_reject_the_file_and_mark_the_right_rows(
         self, uploader: FlaskClient, outbox: Outbox, storage: Path

@@ -13,3 +13,5 @@ class StaffReport(BaseModel):
     warnings: List[Dict[str, Any]]
     grouped_warnings: List[Dict[str, Any]]
     duplicates: List[Dict[str, Any]]
+    # Columns two rows must share to count as duplicates.
+    duplicate_columns: List[str] = []
