@@ -91,7 +91,7 @@ class TestRows:
         [
             pytest.param({"título": None}, "título", "Campo obligatorio vacío", id="obligatorio-vacio"),
             pytest.param({"tipo_documento": "licencia"}, "tipo_documento", "no es válido", id="tipo-de-documento"),
-            pytest.param({"identificación": "12A"}, "identificación", "debe ser numérica", id="cedula-con-letras"),
+            pytest.param({"identificación": "12A"}, "identificación", "contiene letras", id="cedula-con-letras"),
             pytest.param(
                 {"tipo_documento": "pasaporte", "identificación": "AB-12"},
                 "identificación",

@@ -272,3 +272,41 @@ def test_staff_report_service_attaches_pdf_when_normalizations_exist() -> None:
     assert len(attachments) == 2
     assert attachments[0]["filename"] == "reporte_staff.pdf"
     assert attachments[1]["filename"] == "staff_validado.xlsx"
+
+
+def test_the_normalized_file_keeps_full_name_and_identifiers_and_empties_excel_day_zero() -> None:
+    row = {
+        "tipo_documento": "CC",
+        "identificación": "123456",
+        "nombre_completo": "Pérez Gómez, Ana M.",
+        "orcid": "https://orcid.org/0000-0001-2345-6789",
+        "nivel_académico": "doctorado",
+        "tipo_contrato": "vinculado",
+        "jornada_laboral": "tiempo completo",
+        "categoría_laboral": "profesor titular",
+        "sexo": "mujer",
+        "fecha_nacimiento": "15-05-1980",
+        "fecha_inicial_vinculación": "01/01/2020",
+        "fecha_final_vinculación": "31/12/1899 12:00:00 p. m.",
+        "código_unidad_académica": "U01",
+        "unidad_académica": "Facultad de Ciencias (Sede Norte)",
+        "código_subunidad_académica": "",
+        "subunidad_académica": "",
+    }
+    source = io.BytesIO()
+    pd.DataFrame([row]).to_excel(source, index=False, engine="openpyxl")
+    source.seek(0)
+
+    with patch("quyca.files.pdf_report.generate_quality_report", return_value=io.BytesIO(b"pdf")), patch(
+        "quyca.services.notification_service.send_report"
+    ):
+        result = staff_service.process_staff_file(
+            source, "TestInstitution", "staff.xlsx", "27/05/2026 12:00", "admin", "test@test.com", "u1"
+        )
+
+    assert (result["success"], result["errors"]) == (True, 0)
+    normalized = result["df_normalized"].iloc[0]
+    assert normalized["nombre_completo"] == "Pérez Gómez, Ana M."
+    assert normalized["orcid"] == "https://orcid.org/0000-0001-2345-6789"
+    assert normalized["fecha_nacimiento"] == "15/05/1980"
+    assert pd.isna(normalized["fecha_final_vinculación"])

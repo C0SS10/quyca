@@ -3,7 +3,8 @@ from typing import List, Dict, Any
 from quyca.validators import base_validator
 
 CODE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
-UNIT_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9, \-:]+$")
+# Any character a unit name may not have: "Dpto. de Química (Sede Norte)" or "Tecnologías de Información (TIC)" are fine.
+UNIT_INVALID_CHAR_RE = re.compile(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9, \-:().\/&']")
 
 
 def _normalize_code_value(value: Any) -> str:
@@ -30,13 +31,17 @@ def validate(row: dict, index: int) -> List[Dict[str, Any]]:
 
     for field in ["unidad_académica", "subunidad_académica"]:
         value = row.get(field)
-        if not base_validator.is_empty(value) and not UNIT_RE.match(str(value).strip()):
-            errors.append(
-                {
-                    "fila": index,
-                    "columna": field,
-                    "detalle": f"Solo letras, números, espacios, comas, guiones y dos puntos permitidos ya que {value} no es permitido",
-                    "valor": value,
-                }
+        if base_validator.is_empty(value):
+            continue
+        text = str(value).strip()
+        if base_validator.has_broken_encoding(text):
+            detail = "Posible problema de codificación (caracteres como ¿ o Ã± en lugar de letras como ñ o tildes)"
+        else:
+            invalid = sorted(
+                {char if char.isprintable() else "carácter de control" for char in UNIT_INVALID_CHAR_RE.findall(text)}
             )
+            if not invalid:
+                continue
+            detail = f"Contiene caracteres no permitidos: {', '.join(invalid)}"
+        errors.append({"fila": index, "columna": field, "detalle": detail, "valor": value})
     return errors

@@ -9,7 +9,7 @@ from werkzeug.datastructures import FileStorage
 from quyca.models.staff_report_model import StaffReport
 from quyca.normalizers import staff_normalizer
 from quyca.validators import error_grouper, staff_validator
-from quyca.validators.staff_validator import REQUIRED_COLUMNS
+from quyca.validators.staff_validator import STAFF_COLUMNS
 from quyca.files import annotator
 from quyca.files import xlsx_writer_exporter
 from quyca.security import jwt_token_service
@@ -130,7 +130,7 @@ def process_staff_file(
         }
     )
 
-    normalized_df = df[[col for col in REQUIRED_COLUMNS if col in df.columns]].copy()
+    normalized_df = staff_normalizer.blank_excel_zero_dates(df[[col for col in STAFF_COLUMNS if col in df.columns]])
 
     # 4. Column validation
     valid, errores_columnas, _ = staff_validator.validate_columns(df)

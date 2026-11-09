@@ -28,11 +28,26 @@ DOCUMENT_TYPE_MAP: dict[str, str] = {
     "cédula de extranjería": "cédula de extranjería",
     "cédula extranjería": "cédula de extranjería",
     "cedula extranjeria": "cédula de extranjería",
+    "de": "cédula de extranjería",
+    "d.e": "cédula de extranjería",
+    "d.e.": "cédula de extranjería",
+    "documento de extranjería": "cédula de extranjería",
+    "doc. extranjería": "cédula de extranjería",
     # pasaporte
     "ps": "pasaporte",
     "pas": "pasaporte",
+    "pa": "pasaporte",
+    "p.a": "pasaporte",
+    "p.a.": "pasaporte",
+    "passport": "pasaporte",
     "pasaporte": "pasaporte",
 }
+
+# fecha_final_vinculación with one of these is an open-ended link: it is loaded empty, without error or warning.
+OPEN_END_DATE_ALIASES = {"sin fecha fin", "sin fecha final", "sin fecha", "n/a", "na", "-", "vigente", "actual"}
+
+# Excel's day zero, what an empty date cell becomes in some exports (30/12/1899, or 31/12/1899 12:00:00 p. m.).
+EXCEL_ZERO_DATES = {"30/12/1899", "31/12/1899"}
 
 ACADEMIC_LEVELS = {
     "sin título",
@@ -69,9 +84,11 @@ ACADEMIC_LEVEL_MAP: dict[str, str] = {
     "universitario": "profesional",
     "universitaria": "profesional",
     "licenciatura": "profesional",
+    "licenciado": "profesional",
     # especialización
     "especializacion": "especialización",
     "especialización": "especialización",
+    "especialista": "especialización",
     "esp": "especialización",
     # especialización médico-quirúrgica
     "especializacion medica": "especialización médico-quirúrgica",

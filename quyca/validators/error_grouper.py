@@ -32,9 +32,11 @@ def group_warnings(warnings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         key = (str(col), str(detail), str(value))
         if key not in grouped:
-            grouped[key] = {"detalle": detail, "valor": value, "fila": []}
+            grouped[key] = {"detalle": detail, "valor": value, "fila": [], "total_filas": 0}
         if row is not None:
             grouped[key]["fila"].append(row)
+        # A file-level warning (no row) states how many rows it covers.
+        grouped[key]["total_filas"] += 1 if row is not None else w.get("total_filas", 0)
 
     return [
         {
@@ -42,7 +44,7 @@ def group_warnings(warnings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "detalle": info["detalle"],
             "valor": info["valor"],
             "ejemplos": info["fila"][:3],
-            "total_filas": len(info["fila"]),
+            "total_filas": info["total_filas"],
         }
         for (col, _, _), info in grouped.items()
     ]

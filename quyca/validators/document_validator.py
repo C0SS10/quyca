@@ -31,7 +31,8 @@ def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[
                 {
                     "fila": index,
                     "columna": "tipo_documento",
-                    "detalle": f"El tipo de documento '{tipo_documento}' no es válido",
+                    "detalle": f"El tipo de documento '{tipo_documento}' no es válido. Valores admitidos: "
+                    "cédula de ciudadanía, cédula de extranjería o pasaporte",
                     "valor": tipo_documento,
                 }
             )
@@ -40,11 +41,17 @@ def validate(tipo_documento: str, identificacion: str, index: int) -> List[Dict[
             id_str = str(identificacion).strip()
 
             if tnorm in _NUMERIC_ID_TYPES and not _is_numeric_identification(identificacion):
+                # Letters almost always mean a foreign document filed under the wrong type.
+                hint = (
+                    "contiene letras; si es un documento extranjero o pasaporte, cambie el tipo a pasaporte"
+                    if any(char.isalpha() for char in id_str)
+                    else "debe ser numérica"
+                )
                 errors.append(
                     {
                         "fila": index,
                         "columna": "identificación",
-                        "detalle": f"La {tnorm} debe ser numérica",
+                        "detalle": f"La {tnorm} {hint}",
                         "valor": identificacion,
                     }
                 )
