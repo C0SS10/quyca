@@ -17,9 +17,10 @@ def _normalize_name(value: object) -> str:
 
 
 def _is_valid_name(value: str) -> bool:
-    """Return True when the value only contains letters, marks, spaces, apostrophes or hyphens."""
+    """Return True when the value only contains letters, marks, spaces, apostrophes, hyphens, periods
+    (initials: "Ana M. Pérez") or commas ("Pérez Gómez, Ana María")."""
     for char in value:
-        if char in {"'", "-", " "}:
+        if char in {"'", "-", " ", ".", ","}:
             continue
         category = unicodedata.category(char)
         if category.startswith("L") or category.startswith("M"):
@@ -49,7 +50,17 @@ def validate(row: dict, index: int) -> List[Dict[str, Any]]:
 
         normalized_value = _normalize_name(value)
 
-        if not _is_valid_name(normalized_value):
+        if base_validator.has_broken_encoding(normalized_value):
+            errors.append(
+                {
+                    "fila": index,
+                    "columna": field,
+                    "detalle": f"El nombre {normalized_value} tiene un posible problema de codificación "
+                    "(caracteres como ¿ o Ã± en lugar de letras como ñ o tildes)",
+                    "valor": value,
+                }
+            )
+        elif not _is_valid_name(normalized_value):
             errors.append(
                 {
                     "fila": index,

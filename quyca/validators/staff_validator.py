@@ -11,9 +11,11 @@ from quyca.validators import base_validator
 from quyca.validators import error_grouper
 import pandas as pd
 
-REQUIRED_COLUMNS = [
+# Every Staff column, in the order of the normalized file. Present optional ones are kept and compared for duplicates.
+STAFF_COLUMNS = [
     "tipo_documento",
     "identificación",
+    "nombre_completo",
     "primer_apellido",
     "segundo_apellido",
     "nombres",
@@ -34,9 +36,11 @@ REQUIRED_COLUMNS = [
     "subunidad_académica",
 ]
 
-OPTIONAL_COLUMNS = {
-    "nombre_completo",
-}
+IDENTIFIER_COLUMNS = ["orcid", "cvlac", "scholar"]
+
+OPTIONAL_COLUMNS = {"nombre_completo", *IDENTIFIER_COLUMNS}
+
+REQUIRED_COLUMNS = [column for column in STAFF_COLUMNS if column not in OPTIONAL_COLUMNS]
 
 NAME_COLUMNS = {
     "primer_apellido",
@@ -53,8 +57,15 @@ def _relaxed_normalize(header: str) -> str:
     return normalized.replace(" ", "_").replace("-", "_")
 
 
-_NORMALIZED_REQUIRED = {normalize_key(c): c for c in REQUIRED_COLUMNS}
-_NORMALIZED_EXTRA_ALLOWED = {normalize_key(c) for c in EXTRA_ALLOWED}
+_NORMALIZED_COLUMNS = {normalize_key(c): c for c in STAFF_COLUMNS}
+_RELAXED_COLUMNS = {_relaxed_normalize(c): c for c in STAFF_COLUMNS}
+
+IDENTIFIER_WARNING = (
+    "El archivo no contiene la columna {column}, o algunos de sus campos están vacíos. Estos identificadores "
+    "permiten conectar a los autores con las diferentes bases de datos integradas en ImpactU. Recomendamos incluir "
+    "esta información en futuras actualizaciones para enriquecer los registros y mejorar la calidad de los datos "
+    "académicos."
+)
 
 
 def validate_columns(df: pd.DataFrame) -> Tuple[bool, List[str], List[str]]:
@@ -62,17 +73,11 @@ def validate_columns(df: pd.DataFrame) -> Tuple[bool, List[str], List[str]]:
     raw_cols = [str(c).strip() for c in df.columns]
     errors: List[str] = []
     usecols: list[str] = []
-    matched_required: set[str] = set()
-    matched_optional: set[str] = set()
-
-    relaxed_required_map = {_relaxed_normalize(required): required for required in REQUIRED_COLUMNS}
-
-    normalized_optional = {normalize_key(column): column for column in OPTIONAL_COLUMNS}
+    matched: set[str] = set()
 
     for idx, c in enumerate(raw_cols):
         col = c.strip()
         col_norm = normalize_key(col)
-        col_relaxed = _relaxed_normalize(col)
 
         if idx == 0 and (col_norm.startswith("unnamed") or col == "" or col_norm == "index"):
             continue
@@ -82,36 +87,19 @@ def validate_columns(df: pd.DataFrame) -> Tuple[bool, List[str], List[str]]:
                 errors.append(f"Columna sin nombre en posición {idx + 1}")
             continue
 
-        # Columnas obligatorias
-        if col_norm in _NORMALIZED_REQUIRED:
-            canonical = _NORMALIZED_REQUIRED[col_norm]
-            matched_required.add(canonical)
+        # Columnas de Staff (obligatorias u opcionales); las demás se permiten y se ignoran.
+        canonical = _RELAXED_COLUMNS.get(_relaxed_normalize(col))
+        if canonical:
+            matched.add(canonical)
             usecols.append(canonical)
-            continue
-
-        if col_relaxed in relaxed_required_map:
-            canonical = relaxed_required_map[col_relaxed]
-            matched_required.add(canonical)
-            usecols.append(canonical)
-            continue
-
-        # Columnas opcionales
-        if col_norm in normalized_optional:
-            canonical = normalized_optional[col_norm]
-            matched_optional.add(canonical)
-            usecols.append(canonical)
-            continue
-
-        # Otras columnas permitidas
-        continue
 
     # Si viene nombre_completo, primer_apellido, segundo_apellido
     # y nombres dejan de ser obligatorias.
-    has_full_name = "nombre_completo" in matched_optional
+    has_full_name = "nombre_completo" in matched
 
     required_for_file = [column for column in REQUIRED_COLUMNS if not (has_full_name and column in NAME_COLUMNS)]
 
-    missing = [column for column in required_for_file if column not in matched_required]
+    missing = [column for column in required_for_file if column not in matched]
 
     if missing:
         errors.append(f"Columnas faltantes: {', '.join(missing)}")
@@ -137,20 +125,9 @@ def validate_row(row: dict, index: int) -> dict:
 
     errors.extend(name_validator.validate(row, index))
 
-    for field in ["fecha_nacimiento", "fecha_inicial_vinculación", "fecha_final_vinculación"]:
-        date_value = row.get(field)
-        if isinstance(date_value, str) and date_value.strip().lower() == "desconocido":
-            warnings.append(
-                {
-                    "fila": index,
-                    "columna": field,
-                    "detalle": f"{field} fuera de catálogo, se normalizó a desconocido",
-                    "valor": date_value,
-                }
-            )
-        err = date_validator.validate(row.get(field), field, index)
-        if err:
-            errors.append(err)
+    e, w = date_validator.validate(row, index)
+    errors.extend(e)
+    warnings.extend(w)
 
     e, w = academic_validator.validate(row, index)
     errors.extend(e)
@@ -165,16 +142,13 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
     """Validates the full Staff dataframe and detects duplicates."""
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
-    _NORMALIZED_OPTIONAL = {normalize_key(c): c for c in OPTIONAL_COLUMNS}
     # Rename columns to canonical names so row validators always find the right keys
     rename_map = {}
 
     for col in df.columns:
         normalized = normalize_key(col)
-        if normalized in _NORMALIZED_REQUIRED:
-            rename_map[col] = _NORMALIZED_REQUIRED[normalized]
-        elif normalized in _NORMALIZED_OPTIONAL:
-            rename_map[col] = _NORMALIZED_OPTIONAL[normalized]
+        if normalized in _NORMALIZED_COLUMNS:
+            rename_map[col] = _NORMALIZED_COLUMNS[normalized]
 
     df = df.rename(columns=rename_map)
 
@@ -187,7 +161,22 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
         errors.extend(r["errors"])
         warnings.extend(r["warnings"])
 
-    dedupe_cols = [c for c in df.columns if c in REQUIRED_COLUMNS]
+    # One file-level warning per missing or partly empty identifier column; it carries its own row count.
+    for column in IDENTIFIER_COLUMNS:
+        empty_rows = int(df[column].map(base_validator.is_empty).sum()) if column in df.columns else len(df)
+        if empty_rows:
+            value = f"{empty_rows} filas vacías" if column in df.columns else "Columna ausente"
+            warnings.append(
+                {
+                    "fila": None,
+                    "columna": column,
+                    "detalle": IDENTIFIER_WARNING.format(column=column),
+                    "valor": value,
+                    "total_filas": empty_rows,
+                }
+            )
+
+    dedupe_cols = [c for c in df.columns if c in STAFF_COLUMNS]
 
     duplicate_info: List[Dict[str, Any]] = []
     total_dups = 0

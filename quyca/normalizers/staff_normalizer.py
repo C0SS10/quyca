@@ -23,6 +23,8 @@ from quyca.constants.staff_field_values import (
     ACADEMIC_LEVEL_MAP,
     CONTRACT_TYPE_MAP,
     DOCUMENT_TYPE_MAP,
+    EXCEL_ZERO_DATES,
+    OPEN_END_DATE_ALIASES,
     SEX_MAP,
     JOB_CATEGORY_MAP,
     WORK_SCHEDULE_MAP,
@@ -65,6 +67,29 @@ _MAP_TO_UNKNOWN_FIELDS = {
     "sexo",
 }
 _DATE_MAP_TO_UNKNOWN_FIELDS = set(_DATE_FIELDS)
+_OPEN_END_DATE_FIELD = "fecha_final_vinculación"
+_EMPTY_LABEL = "(vacío)"
+
+# D/M/YYYY with /, - or . and an optional time ("31/12/1899 12:00:00 p. m.").
+_DATE_TEXT_RE = re.compile(
+    r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?\s*m\.?)?)?$", re.IGNORECASE
+)
+
+_GENDER_MARK_RE = re.compile(r"\((?:a|o|as|os)\)")
+# Detail after the catalog value: a dependency ("Profesor Titular - Depto. X") or a field ("Maestría en Educación").
+_TRAILING_DETAIL_RE = re.compile(r"\s+(?:-|en)\s+.*$")
+_FEMININE_WORDS = {
+    "profesora": "profesor",
+    "instructora": "instructor",
+    "investigadora": "investigador",
+    "asociada": "asociado",
+    "emerita": "emerito",
+    "catedratica": "catedratico",
+    "doctora": "doctor",
+    "tecnica": "tecnico",
+    "tecnologa": "tecnologo",
+    "licenciada": "licenciado",
+}
 
 _ORCID_CODE_RE = re.compile(r"([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])")
 _CVLAC_URL_RE = re.compile(r"cod_rh=([0-9]+)")
@@ -110,10 +135,25 @@ def _normalize_header(header: str) -> str:
     return str(header).strip().lower().replace(" ", "_").replace("-", "_")
 
 
+def _catalog_key(value: Any) -> str:
+    """Lookup key of a catalog value, blind to accents, case, gender (Profesor(a), Profesora) and trailing detail."""
+    key = _TRAILING_DETAIL_RE.sub("", _GENDER_MARK_RE.sub("", normalize_key(value)))
+    return " ".join(_FEMININE_WORDS.get(word, word) for word in key.split())
+
+
 _NORMALIZED_FIELD_MAPS: dict[str, dict[str, str]] = {
-    field: {normalize_key(alias): canonical for alias, canonical in mapping.items()}
+    field: {_catalog_key(alias): canonical for alias, canonical in mapping.items()}
     for field, mapping in _FIELD_MAPS.items()
 }
+
+
+def split_date_text(value: str) -> tuple[int, int, int] | None:
+    """Day, month and year of D/M/YYYY text written with /, - or . and maybe a time; None for any other text."""
+    match = _DATE_TEXT_RE.match(value.strip())
+    if not match:
+        return None
+    day, month, year = match.groups()
+    return int(day), int(month), int(year)
 
 
 def _is_meaningful_change(original: str, normalized: str) -> bool:
@@ -167,7 +207,18 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _parse_date(value: Any) -> Any:
-    """Converts Excel numeric date serials to DD/MM/YYYY; leaves other values unchanged."""
+    """Converts Excel dates, serials and D/M/YYYY text (any separator, maybe a time) to DD/MM/YYYY.
+    Anything else, impossible dates included, is left unchanged for the validator to report."""
+    if isinstance(value, str):
+        parts = split_date_text(value)
+        if parts is None:
+            return value
+        day, month, year = parts
+        try:
+            return date(year, month, day).strftime("%d/%m/%Y")
+        except ValueError:
+            return value
+
     if isinstance(value, (pd.Timestamp, datetime, date)) and not pd.isna(value):
         try:
             return pd.Timestamp(value).strftime("%d/%m/%Y")
@@ -234,8 +285,7 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
                 continue
 
             raw_str = str(raw_value).strip()
-            lookup_key = normalize_key(raw_str)
-            canonical = mapping.get(lookup_key)
+            canonical = mapping.get(_catalog_key(raw_str))
 
             if canonical is None and field in _MAP_TO_UNKNOWN_FIELDS:
                 canonical = _UNKNOWN_VALUE
@@ -269,7 +319,18 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
             if _is_valid_short_date(raw_str):
                 continue
 
-            if lookup_key in _UNKNOWN_ALIASES and raw_str != _UNKNOWN_VALUE:
+            if field == _OPEN_END_DATE_FIELD and lookup_key in OPEN_END_DATE_ALIASES:
+                df.at[idx, field] = None
+                changelog.append(
+                    {
+                        "fila": int(str(idx)),
+                        "fila_excel": int(str(idx)) + 2,
+                        "columna": field,
+                        "valor_original": raw_str,
+                        "valor_normalizado": _EMPTY_LABEL,
+                    }
+                )
+            elif lookup_key in _UNKNOWN_ALIASES and raw_str != _UNKNOWN_VALUE:
                 df.at[idx, field] = _UNKNOWN_VALUE
                 changelog.append(
                     {
@@ -282,3 +343,12 @@ def map_values(df: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
                 )
 
     return df, changelog
+
+
+def blank_excel_zero_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """Empties Excel's day zero in the file to save. It stays in the validated df, where the validator warns about it."""
+    df = df.copy()
+    for field in _DATE_FIELDS:
+        if field in df.columns:
+            df[field] = df[field].mask(df[field].isin(EXCEL_ZERO_DATES))
+    return df
