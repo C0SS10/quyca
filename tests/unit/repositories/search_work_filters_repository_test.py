@@ -15,6 +15,13 @@ def database():
     repository._GLOBAL_FILTERS_CACHE.clear()
 
 
+def test_a_doi_search_keeps_the_other_filters():
+    pipeline = repository.build_works_match(QueryParams(keywords="doi:10.18316/2318-8081.15.1", years="2020,2024"))
+
+    assert pipeline[0] == {"$match": {"doi": "https://doi.org/10.18316/2318-8081.15.1"}}
+    assert len(pipeline) == 2
+
+
 def test_global_filters_are_read_from_the_filters_collection(database):
     database["filters"].find_one.return_value = {"_id": "works_global", "filters": FILTERS}
 
