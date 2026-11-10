@@ -13,7 +13,8 @@ from quyca.repositories.search_work_filters_repository import compute_works_avai
 
 
 def get_work_by_id(work_id: str, pipeline_params: dict | None = None) -> Work:
-    pipeline = [{"$match": {"_id": base_repository.to_object_id(work_id)}}]
+    # Persistent ids are strings: a DOI, OpenAlex, ScienTI... or the old ObjectId as text when there is none.
+    pipeline = [{"$match": {"_id": work_id}}]
     set_issn_to_pipeline(pipeline)
     base_repository.set_project(pipeline, (pipeline_params or {}).get("project"))
 

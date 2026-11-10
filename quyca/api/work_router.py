@@ -8,7 +8,7 @@ work_router = Blueprint("work_app_router", __name__)
 register_error_handlers(work_router)
 
 
-@work_router.route("/<work_id>", methods=["GET"])
+@work_router.route("/<path:work_id>", methods=["GET"])
 def get_work_by_id(work_id: str) -> Response:
     return jsonify(work_service.get_work_by_id(work_id, parse_query_params()))
 
@@ -21,6 +21,6 @@ def get_work_by_doi() -> Response:
     return jsonify(work_service.get_work_by_doi(doi, parse_query_params(), request.url))
 
 
-@work_router.route("/<work_id>/authors", methods=["GET"])
+@work_router.route("/<path:work_id>/authors", methods=["GET"])
 def get_work_authors(work_id: str) -> Response:
     return jsonify(work_service.get_work_authors(work_id, parse_query_params()))
