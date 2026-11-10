@@ -1,3 +1,5 @@
+import re
+
 from bson import ObjectId
 from pymongo.collection import Collection
 
@@ -5,12 +7,31 @@ from quyca.constants.institutions import institutions_list
 from quyca.exceptions import InvalidParamException
 from quyca.models.base_model import QueryParams
 
+DOI_URL = "https://doi.org/"
+# The whole search text is the candidate, so "10.<registrant>/<suffix>" without spaces is enough: no title looks like
+# that. Crossref's stricter regex is meant to find where a DOI ends inside free text, and rejects some valid DOIs.
+_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
+
 
 def text_search_match(keywords: str | None) -> list[dict]:
     """
     `$text` must be the first stage of a pipeline, so every search pipeline starts from this list.
     """
     return [{"$match": {"$text": {"$search": keywords}}}] if keywords else []
+
+
+def normalize_doi(work_doi: str) -> str:
+    """Works store the DOI as a lowercase https://doi.org/ URL; accept it bare, with doi: or as any doi.org URL."""
+    bare_doi = re.sub(r"^((https?://)?(dx\.)?doi\.org/|doi:\s*)", "", work_doi.strip(), flags=re.IGNORECASE)
+    return DOI_URL + bare_doi.lower()
+
+
+def works_search_match(keywords: str | None) -> list[dict]:
+    """Search of works: the exact DOI when the text is one, the text index otherwise."""
+    doi = normalize_doi(keywords or "")
+    if _DOI_RE.match(doi.removeprefix(DOI_URL)):
+        return [{"$match": {"doi": doi}}]
+    return text_search_match(keywords)
 
 
 def to_object_id(value: str) -> ObjectId:

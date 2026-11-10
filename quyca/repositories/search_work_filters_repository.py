@@ -22,7 +22,7 @@ _GLOBAL_FILTERS_CACHE: dict = {}
 
 
 def build_works_match(query_params: QueryParams) -> list[dict]:
-    pipeline = base_repository.text_search_match(query_params.keywords)
+    pipeline = base_repository.works_search_match(query_params.keywords)
     set_product_filters(pipeline, query_params)
     return pipeline
 
