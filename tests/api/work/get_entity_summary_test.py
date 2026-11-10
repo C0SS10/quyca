@@ -1,4 +1,6 @@
 import pytest
+from urllib.parse import quote
+
 from quyca.clients.mongo import database
 
 random_work_id = str(database["works"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])
@@ -6,7 +8,7 @@ random_patent_id = str(database["patents"].aggregate([{"$sample": {"size": 1}}])
 random_project_id = str(database["projects"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])
 
 DETAIL_URLS = [
-    f"/work/{random_work_id}",
+    f"/work/{quote(random_work_id)}",
     f"/patent/{random_patent_id}",
     f"/project/{random_project_id}",
     "/person/0000000317",

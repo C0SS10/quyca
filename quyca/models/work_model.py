@@ -76,7 +76,7 @@ class Abstract(BaseModel):
 class Work(BaseModel):
     model_config = ConfigDict(json_encoders={ObjectId: str})
 
-    id: PyObjectId = Field(alias="_id")
+    id: str | PyObjectId = Field(alias="_id")
     abstract: dict | None = None
     abstracts: list[Abstract] | None = None
     apc: APC | None = Field(default_factory=APC)
