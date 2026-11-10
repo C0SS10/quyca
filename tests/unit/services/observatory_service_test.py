@@ -19,6 +19,16 @@ CUT = {
     "staff_fecha_ref": "2026-05-30",
     "cargado_en": "2026-11-04",
 }
+SOURCES = [
+    {
+        "clave": "impactu",
+        "nombre": "ImpactU",
+        "fecha_corte": "2026-10-16",
+        "detalle": "Extraído del 4 al 16 de octubre de 2026.",
+        "tableros": "1,2,3",
+    },
+    {"clave": "dane_mgn", "nombre": "DANE", "fecha_corte": "", "detalle": "Sin día de corte.", "tableros": "2"},
+]
 
 
 @pytest.fixture()
@@ -30,6 +40,7 @@ def repository(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         "payload": PAYLOAD,
     }
     fake.get_cut.return_value = dict(CUT)
+    fake.get_cut_sources.return_value = [dict(row) for row in SOURCES]
     monkeypatch.setattr(observatory_service, "observatory_repository", fake)
     return fake
 
@@ -87,3 +98,23 @@ def test_the_cut_carries_the_footer_text_and_a_utc_timestamp(
 def test_an_unknown_observatory_has_no_cut(repository: MagicMock) -> None:
     with pytest.raises(NotEntityException):
         observatory_service.get_cut("otro")
+
+
+def test_the_cut_lists_the_sources_with_their_boards(repository: MagicMock) -> None:
+    cut = observatory_service.get_cut("vri-udea")
+
+    assert cut["fuentes"][0] == {
+        "clave": "impactu",
+        "nombre": "ImpactU",
+        "fecha_corte": "2026-10-16",
+        "detalle": "Extraído del 4 al 16 de octubre de 2026.",
+        "tableros": [1, 2, 3],
+    }
+    assert cut["fuentes"][1]["fecha_corte"] == "" and cut["fuentes"][1]["tableros"] == [2]
+    assert cut["texto"] == "Datos consultados en octubre de 2026."  # the old keys are untouched
+
+
+def test_a_load_without_sources_still_answers_the_cut(repository: MagicMock) -> None:
+    repository.get_cut_sources.return_value = []
+
+    assert observatory_service.get_cut("vri-udea")["fuentes"] == []

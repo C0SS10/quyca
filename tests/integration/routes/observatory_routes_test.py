@@ -41,6 +41,9 @@ def repository(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         "staff_fecha_ref": "2026-05-30",
         "cargado_en": "2026-11-04",
     }
+    fake.get_cut_sources.return_value = [
+        {"clave": "ods", "nombre": "ODS", "fecha_corte": "2026-11-04", "detalle": "x", "tableros": "1"}
+    ]
     monkeypatch.setattr(observatory_service, "observatory_repository", fake)
     return fake
 
@@ -98,6 +101,9 @@ def test_the_cut_is_wrapped_in_data(client: FlaskClient, repository: MagicMock) 
     assert response.status_code == 200
     assert response.get_json()["data"]["texto"] == "Datos consultados en octubre de 2026."
     assert response.get_json()["data"]["cargado_en"] == "2026-11-04T00:00:00Z"
+    assert response.get_json()["data"]["fuentes"] == [
+        {"clave": "ods", "nombre": "ODS", "fecha_corte": "2026-11-04", "detalle": "x", "tableros": [1]}
+    ]
 
 
 @pytest.mark.usefixtures("configured")

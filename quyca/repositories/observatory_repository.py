@@ -51,3 +51,23 @@ def get_cut() -> dict | None:
     if not result.result_rows:
         return None
     return dict(zip(columns, result.result_rows[0]))
+
+
+def get_cut_sources() -> list[dict]:
+    """One row per data source of the newest load (obs_corte_fuente: clave, nombre, fecha_corte, detalle, tableros).
+
+    Empty when that table does not exist yet in the database (a load made before B148): /cut then answers without `fuentes` content.
+    """
+    columns = ["clave", "nombre", "fecha_corte", "detalle", "tableros"]
+    table = _table("obs_corte_fuente")
+    sql = f"""
+        SELECT {", ".join(columns)}
+        FROM {table}
+        WHERE load_id = (SELECT max(load_id) FROM {table})
+        ORDER BY orden
+    """
+    try:
+        result = client.query(sql)
+    except Exception:  # noqa: BLE001 - the table is new; a database loaded before it must keep answering
+        return []
+    return [dict(zip(columns, row)) for row in result.result_rows]

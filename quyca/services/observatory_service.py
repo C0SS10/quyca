@@ -63,7 +63,19 @@ def get_cut(slug: str) -> dict:
     data["load_id"] = int(cut["load_id"])
     data["cargado_en"] = _iso_utc(data["cargado_en"])
     data["texto"] = _footer(data["etl_hasta"])
+    data["fuentes"] = [_source(row) for row in observatory_repository.get_cut_sources()]
     return data
+
+
+def _source(row: dict) -> dict:
+    """A data source with its cut date ('' when the source declares none) and the boards that use it."""
+    return {
+        "clave": str(row["clave"]),
+        "nombre": str(row["nombre"]),
+        "fecha_corte": str(row["fecha_corte"] or ""),
+        "detalle": str(row["detalle"] or ""),
+        "tableros": [int(board) for board in str(row["tableros"]).split(",") if board],
+    }
 
 
 def _text(value: object) -> str:

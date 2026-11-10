@@ -58,6 +58,21 @@ def test_the_cut_is_a_dict_of_the_newest_load(clickhouse: MagicMock) -> None:
     assert "ORDER BY load_id DESC LIMIT 1" in clickhouse.query.call_args.args[0]
 
 
+def test_the_sources_of_the_cut_are_dicts_of_the_newest_load(clickhouse: MagicMock) -> None:
+    clickhouse.query.return_value = SimpleNamespace(result_rows=[("ods", "ODS", "2026-11-04", "x", "1")])
+
+    sources = observatory_repository.get_cut_sources()
+
+    assert sources == [{"clave": "ods", "nombre": "ODS", "fecha_corte": "2026-11-04", "detalle": "x", "tableros": "1"}]
+    assert "max(load_id)" in clickhouse.query.call_args.args[0]
+
+
+def test_a_database_without_the_sources_table_gives_no_sources(clickhouse: MagicMock) -> None:
+    clickhouse.query.side_effect = RuntimeError("UNKNOWN_TABLE")
+
+    assert observatory_repository.get_cut_sources() == []
+
+
 def test_the_tables_are_qualified_with_the_observatory_database(
     clickhouse: MagicMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
