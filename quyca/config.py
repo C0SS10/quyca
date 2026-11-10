@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     CLICKHOUSE_USER: str = ""
     CLICKHOUSE_PASSWORD: SecretStr = SecretStr("")
     CLICKHOUSE_DB: str = ""
+    # Database that holds the observatory tables (obs_bundle, obs_corte). Empty means the same as CLICKHOUSE_DB.
+    OBSERVATORY_DB: str = ""
 
     # Embeddings of the seed (optional): without them only the candidate routes answer 503.
     OLLAMA_URL: str = ""
