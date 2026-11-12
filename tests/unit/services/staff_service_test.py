@@ -4,6 +4,7 @@ import pandas as pd
 from werkzeug.datastructures import FileStorage
 from quyca.models.staff_report_model import StaffReport
 from quyca.services import staff_service
+from quyca.validators.staff_validator import IDENTIFIER_COLUMNS, NAME_COLUMNS, STAFF_COLUMNS
 
 
 def test_staff_service_persists_files_on_success() -> None:
@@ -310,3 +311,48 @@ def test_the_normalized_file_keeps_full_name_and_identifiers_and_empties_excel_d
     assert normalized["orcid"] == "https://orcid.org/0000-0001-2345-6789"
     assert normalized["fecha_nacimiento"] == "15/05/1980"
     assert pd.isna(normalized["fecha_final_vinculación"])
+
+
+def test_headers_without_accents_or_with_invisible_characters_reach_the_normalized_file() -> None:
+    # Accepted by validate_columns, these headers used to be dropped from the saved file (and left unnormalized).
+    row = {
+        "Tipo Documento": "CC",
+        "Identificacion": "123456",
+        "​Nombre Completo": "Pérez Gómez, Ana M.",
+        "Nivel Academico": "Doctora en Física",
+        "Tipo Contrato": "vinculado",
+        "Jornada Laboral": "tiempo completo",
+        "Categoria Laboral": "Titular",
+        "Sexo": "F",
+        "Fecha Nacimiento": "15-05-1980",
+        "Fecha Inicial Vinculacion": "01/01/2020",
+        "Fecha Final Vinculacion": "",
+        "Codigo Unidad Academica": "U01",
+        "Unidad Academica": "Facultad de Ciencias",
+        "Codigo Subunidad Academica": "",
+        "Subunidad Academica": "",
+    }
+    source = io.BytesIO()
+    pd.DataFrame([row]).to_excel(source, index=False, engine="openpyxl")
+    source.seek(0)
+
+    with patch("quyca.files.pdf_report.generate_quality_report", return_value=io.BytesIO(b"pdf")), patch(
+        "quyca.services.notification_service.send_report"
+    ):
+        result = staff_service.process_staff_file(
+            source, "TestInstitution", "staff.xlsx", "27/05/2026 12:00", "admin", "test@test.com", "u1"
+        )
+
+    assert (result["success"], result["errors"]) == (True, 0)
+    normalized = result["df_normalized"]
+    assert normalized.columns.tolist() == [
+        column for column in STAFF_COLUMNS if column not in {*NAME_COLUMNS, *IDENTIFIER_COLUMNS}
+    ]
+    first = normalized.iloc[0]
+    assert first["nombre_completo"] == "Pérez Gómez, Ana M."
+    assert (first["nivel_académico"], first["categoría_laboral"], first["sexo"]) == (
+        "doctorado",
+        "profesor titular",
+        "mujer",
+    )
+    assert first["fecha_nacimiento"] == "15/05/1980"

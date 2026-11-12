@@ -2,12 +2,10 @@ import math
 from typing import Any
 import pandas as pd
 import pytest
-from quyca.validators import ciarp_validator, staff_validator
-from quyca.validators.ciarp_validator import REQUIRED_COLUMNS
+from quyca.validators import ciarp_validator
+from quyca.validators.ciarp_validator import REMOVED_COLUMNS, REQUIRED_COLUMNS
 
 VALID: dict[str, Any] = {
-    "código_unidad_académica": "FAC01",
-    "código_subunidad_académica": "DEP01",
     "identificación": "1017234567",
     "año": "2020",
     "título": "Bioprospección en Antioquia",
@@ -47,7 +45,10 @@ class TestColumns:
         valid, errors, _ = ciarp_validator.validate_columns(pd.DataFrame(columns=REQUIRED_COLUMNS[2:]))
 
         assert valid is False
-        assert errors == ["Columnas faltantes: código_unidad_académica, código_subunidad_académica"]
+        assert errors == ["Columnas faltantes: identificación, año"]
+
+    def test_removed_columns_are_not_required(self) -> None:
+        assert not set(REMOVED_COLUMNS) & set(REQUIRED_COLUMNS)
 
     def test_extra_columns_are_ignored(self) -> None:
         valid, _, columns = ciarp_validator.validate_columns(pd.DataFrame(columns=[*REQUIRED_COLUMNS, "comentarios"]))
@@ -91,7 +92,6 @@ class TestRows:
             pytest.param({"título": None}, "título", "Campo obligatorio vacío", id="obligatorio-vacio"),
             pytest.param({"año": "3000"}, "año", "Año no válido", id="año-futuro"),
             pytest.param({"año": "dos mil"}, "año", "debe ser numérico", id="año-en-letras"),
-            pytest.param({"código_unidad_académica": "FAC 01"}, "código_unidad_académica", "solo letras", id="codigo"),
         ],
     )
     def test_errors(self, changes: dict, column: str, detail: str) -> None:
@@ -112,18 +112,13 @@ class TestRows:
         assert errors == []
         assert [found_column for found_column, _ in warnings] == [column]
 
-    @pytest.mark.parametrize("value", ["licencia", "nan", None, float("nan")])
-    def test_tipo_documento_is_no_longer_validated(self, value: Any) -> None:
-        assert _findings(tipo_documento=value, identificación="AB-12") == ([], [])
+    @pytest.mark.parametrize("column", REMOVED_COLUMNS)
+    @pytest.mark.parametrize("value", ["licencia", "FAC 01#", "nan", None, float("nan")])
+    def test_removed_columns_are_no_longer_validated(self, column: str, value: Any) -> None:
+        assert _findings(**{column: value}, identificación="AB-12") == ([], [])
 
     def test_an_empty_year_is_reported_once(self) -> None:
         assert _findings(año=float("nan")) == ([("año", "Campo obligatorio vacío")], [])
-
-    def test_the_unit_code_is_checked_like_in_staff(self) -> None:
-        row = {**VALID, "código_unidad_académica": "FAC 01"}
-        staff_errors = [e for e in staff_validator.validate_row(row, 0)["errors"] if e["columna"].startswith("código")]
-
-        assert ciarp_validator.validate_row(row, 0)["errors"] == staff_errors
 
     @pytest.mark.parametrize("country", ["C_", "^^", "[]", "C1", "COL"])
     def test_a_country_must_be_two_letters(self, country: str) -> None:
@@ -222,13 +217,12 @@ class TestDataframe:
         ]
 
     def test_empty_optional_columns_are_one_warning_per_column_and_never_an_error(self) -> None:
-        rows = [{**VALID, "código_unidad_académica": None, "ranking": None, "identificación": str(i)} for i in range(3)]
+        rows = [{**VALID, "ranking": None, "identificación": str(i)} for i in range(3)]
 
         report = ciarp_validator.validate_dataframe(pd.DataFrame(rows))
 
         assert report.total_errors == 0
         assert [(w["columna"], w["detalle"], w["total_filas"]) for w in report.grouped_warnings] == [
-            ("código_unidad_académica", "La columna código_unidad_académica está vacía en 3 filas", 3),
             ("ranking", "La columna ranking está vacía en 3 filas", 3),
         ]
 

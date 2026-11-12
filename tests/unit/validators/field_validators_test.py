@@ -115,21 +115,35 @@ def test_document_validator_lists_the_accepted_types() -> None:
 
     assert errors[0]["detalle"] == (
         "El tipo de documento 'tarjeta de identidad' no es válido. "
-        "Valores admitidos: cédula de ciudadanía, cédula de extranjería o pasaporte"
+        "Valores admitidos: cédula de ciudadanía, cédula de extranjería, documento extranjero o pasaporte"
     )
+
+
+@pytest.mark.parametrize("identification", ["X1234567", "ab12345678901234c", 12345678])
+def test_document_validator_accepts_a_foreign_document(identification) -> None:
+    assert document_validator.validate("documento extranjero", identification, 0) == []
+
+
+@pytest.mark.parametrize("identification", ["12.345.678-Z", "AB 123", "X" * 18])
+def test_document_validator_rejects_a_foreign_document_out_of_format(identification) -> None:
+    errors = document_validator.validate("documento extranjero", identification, 0)
+
+    assert [(error["columna"], error["detalle"]) for error in errors] == [
+        ("identificación", "Formato inválido para documento extranjero: solo letras y números, hasta 17 caracteres")
+    ]
+
+
+LETTERS_HINT = (
+    "La cédula de ciudadanía contiene letras; si es un documento extranjero o pasaporte, "
+    "cambie el tipo a documento extranjero o pasaporte"
+)
 
 
 @pytest.mark.parametrize(
     "identification, detail",
     [
-        (
-            "AB123456",
-            "La cédula de ciudadanía contiene letras; si es un documento extranjero o pasaporte, cambie el tipo a pasaporte",
-        ),
-        (
-            "12345678X",
-            "La cédula de ciudadanía contiene letras; si es un documento extranjero o pasaporte, cambie el tipo a pasaporte",
-        ),
+        ("AB123456", LETTERS_HINT),
+        ("12345678X", LETTERS_HINT),
         ("123-456", "La cédula de ciudadanía debe ser numérica"),
     ],
 )

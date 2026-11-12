@@ -144,7 +144,28 @@ def test_catalogs_accept_gender_variants_trailing_detail_and_new_document_aliase
 
     assert mapped_df["categoría_laboral"].tolist() == ["profesor titular", "profesor asociado", "desconocido"]
     assert mapped_df["nivel_académico"].tolist() == ["maestría", "doctorado", "especialización"]
-    assert mapped_df["tipo_documento"].tolist() == ["pasaporte", "cédula de extranjería", "pasaporte"]
+    assert mapped_df["tipo_documento"].tolist() == ["pasaporte", "documento extranjero", "pasaporte"]
+
+
+def test_document_types_pa_is_passport_and_de_is_foreign_document() -> None:
+    df = pd.DataFrame({"tipo_documento": ["pa", "PA", "de", "DE", "d.e", "D.E.", "Documento Extranjero", "CE"]})
+
+    mapped_df, _ = staff_normalizer.map_values(df)
+
+    assert mapped_df["tipo_documento"].tolist() == [
+        *["pasaporte"] * 2,
+        *["documento extranjero"] * 5,
+        "cédula de extranjería",
+    ]
+
+
+def test_management_job_categories_are_canonical() -> None:
+    df = pd.DataFrame({"categoría_laboral": ["Decano", "DIRECTOR", "jefe", "Administrativo", "Decana"]})
+
+    mapped_df, _ = staff_normalizer.map_values(df)
+
+    # No accepted variants yet: a feminine form is still out of the catalog.
+    assert mapped_df["categoría_laboral"].tolist() == ["decano", "director", "jefe", "administrativo", "desconocido"]
 
 
 def test_blank_excel_zero_dates_only_touches_date_columns() -> None:
