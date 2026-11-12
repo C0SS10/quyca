@@ -67,13 +67,13 @@ def generate_quality_report(
                 <p>La siguiente tabla describe el formato estándar que debe seguirse al cargar los datos:</p>
                 <table>
                     <tr><th>Columna</th><th>Valores admitidos / Observaciones</th></tr>
-                    <tr><td>tipo_documento</td><td>cédula de ciudadanía, cédula de extranjería, pasaporte</td></tr>
+                    <tr><td>tipo_documento</td><td>cédula de ciudadanía, cédula de extranjería, documento extranjero, pasaporte</td></tr>
                     <tr><td>identificación</td><td>Número de identificación según tipo</td></tr>
                     {name_rows}
                     <tr><td>nivel_académico</td><td>técnico, pregrado, maestría, doctorado, especialización, especialización médica</td></tr>
                     <tr><td>tipo_contrato</td><td>vinculado, ocasional, cátedra, prestación de servicios, postdoc</td></tr>
                     <tr><td>jornada_laboral</td><td>medio tiempo, tiempo completo, tiempo parcial</td></tr>
-                    <tr><td>categoría_laboral</td><td>auxiliar, asociado, titular</td></tr>
+                    <tr><td>categoría_laboral</td><td>auxiliar, asociado, titular, decano, director, jefe, administrativo</td></tr>
                     <tr><td>sexo</td><td>hombre, mujer, intersexual (vacío si no se tiene)</td></tr>
                     <tr><td>fechas (nacimiento / inicial vinculación / final vinculación)</td><td>Formato DD/MM/YYYY (fecha corta de Excel)</td></tr>
                     <tr><td>código_unidad_académica</td><td>Código único (fijo en futuras actualizaciones)</td></tr>
@@ -410,12 +410,6 @@ def generate_quality_report_ciarp(
                 <p>La siguiente tabla describe el formato estándar que debe seguirse al cargar los datos:</p>
                 <table>
                     <tr><th>Columna</th><th>Valores admitidos / Observaciones</th></tr>
-                    <tr><td>código_unidad_académica</td><td>Código único de la unidad académica (si no tiene un
-                    código asignado, se le debe asignar y nunca se debe
-                    cambiar en futuras actualizaciones)</td></tr>
-                    <tr><td>código_subunidad_académica</td><td>Código único de la subunidad académica si existe (si no
-                    tiene un código asignado, se le debe asignar y nunca se
-                    debe cambiar en futuras actualizaciones)</td></tr>
                     <tr><td>identificación</td><td>Del autor</td></tr>
                     <tr><td>año</td><td>Del producto</td></tr>
                     <tr><td>título</td><td>Del producto</td></tr>
