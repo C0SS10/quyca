@@ -1,3 +1,4 @@
+import re
 from typing import List, Dict, Any, Tuple
 from quyca.validators import staff_required_fields_validator
 from quyca.models.staff_report_model import StaffReport
@@ -51,14 +52,25 @@ NAME_COLUMNS = {
 EXTRA_ALLOWED = {"estado_de_validación", "observación"}
 
 
+_SEPARATORS_RE = re.compile(r"[\s_-]+")
+
+
 def _relaxed_normalize(header: str) -> str:
-    """Normalizes a header enough to compare spaces, hyphens and underscores."""
-    normalized = normalize_key(header)
-    return normalized.replace(" ", "_").replace("-", "_")
+    """Header key blind to accents, case, invisible characters and runs of spaces (even non-breaking), hyphens or
+    underscores: "Nombre  Completo" and "nombre-completo" are both nombre_completo."""
+    return normalize_key(_SEPARATORS_RE.sub("_", str(header).strip()))
 
 
-_NORMALIZED_COLUMNS = {normalize_key(c): c for c in STAFF_COLUMNS}
 _RELAXED_COLUMNS = {_relaxed_normalize(c): c for c in STAFF_COLUMNS}
+
+
+def canonical_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Renames every Staff column as validate_columns matches it ("Categoria Laboral" -> "categoría_laboral"),
+    so the normalizer, the row validators and the saved file find every column the validation accepted."""
+    renamed = df.rename(columns=lambda column: _RELAXED_COLUMNS.get(_relaxed_normalize(column), column))
+    # Two headers of the same column ("Identificacion" and "identificación"): only the first one is kept.
+    return renamed.loc[:, ~renamed.columns.duplicated()]
+
 
 IDENTIFIER_WARNING = (
     "El archivo no contiene la columna {column}, o algunos de sus campos están vacíos. Estos identificadores "
@@ -140,15 +152,7 @@ def validate_dataframe(df: pd.DataFrame) -> StaffReport:
     """Validates the full Staff dataframe and detects duplicates."""
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
-    # Rename columns to canonical names so row validators always find the right keys
-    rename_map = {}
-
-    for col in df.columns:
-        normalized = normalize_key(col)
-        if normalized in _NORMALIZED_COLUMNS:
-            rename_map[col] = _NORMALIZED_COLUMNS[normalized]
-
-    df = df.rename(columns=rename_map)
+    df = canonical_columns(df)
 
     # Keep the sheet's row labels: findings must point to the row the user sees, even after blank rows.
     df = df.dropna(how="all")

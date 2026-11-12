@@ -63,15 +63,18 @@ escritura frecuente.
 
 - Se permiten letras, numeros, espacios y `, - : ( ) . / & '` (`Tecnologias de Informacion y Comunicaciones (TIC)`).
 - El error lista los caracteres no permitidos encontrados. La codificacion dañada tiene su propio mensaje.
-- Aplica tambien a CIARP, que comparte el validador.
 
 ## Tipo de documento e identificacion
 
-- Equivalencias: `CC` → cedula de ciudadania; `CE`, `DE`, `D.E.`, `documento de extranjeria`, `doc. extranjeria` →
-  cedula de extranjeria; `PS`, `PA`, `P.A.`, `passport` → pasaporte.
+- Valores admitidos: cedula de ciudadania, cedula de extranjeria, documento extranjero y pasaporte.
+- Equivalencias: `CC` → cedula de ciudadania; `CE`, `documento de extranjeria`, `doc. extranjeria` → cedula de
+  extranjeria; `DE`, `D.E.`, `D.E` → documento extranjero; `PS`, `PA`, `P.A.`, `passport` → pasaporte.
 - Un tipo no reconocido es error y el mensaje lista los valores admitidos.
-- Una cedula (CC/CE) con letras sigue siendo error, con la sugerencia de cambiar el tipo a pasaporte si es un documento
-  extranjero.
+- Una cedula (CC/CE) con letras sigue siendo error, con la sugerencia de cambiar el tipo a documento extranjero o
+  pasaporte.
+- La identificacion de un documento extranjero solo admite letras y numeros, hasta 17 caracteres (campo alfanumerico
+  de 17 del anexo tecnico PAI230 de MinEducacion para docentes, directivos y personal administrativo). Puntos,
+  guiones o espacios son error.
 
 ## Campos con validacion de formato (invalido = error)
 
@@ -170,3 +173,8 @@ Si incluir cambios de negocio, por ejemplo:
 - 2026-09-30: Actualización campos `nombre_completo`, `subunidad_academica`, `codigo_unidad_academica`
 - 2026-11-09: `orcid`, `cvlac` y `scholar` opcionales; nombres con puntos y comas; unidades con parentesis y signos
   habituales; fechas flexibles; nuevas equivalencias de tipo de documento; catalogos tolerantes a genero y sufijos.
+- 2026-11-11: Nuevo tipo de documento `documento extranjero` (`DE`, `D.E.`, `D.E`, que antes iban a cedula de
+  extranjeria) con identificacion alfanumerica de hasta 17 caracteres; `PA` → pasaporte; categorias laborales
+  `decano`, `director`, `jefe` y `administrativo`, sin variantes por ahora. Correccion: una columna aceptada con un
+  encabezado sin tildes o con caracteres invisibles (`Categoria Laboral`, `Nombre Completo` copiado de otra fuente) se
+  validaba pero no se normalizaba ni se guardaba; ahora se renombra a su nombre canonico antes de todo el proceso.
