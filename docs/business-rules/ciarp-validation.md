@@ -25,13 +25,13 @@ El CIARP se valida de forma independiente: ningun dato se toma de un archivo de 
 El archivo debe traer estas columnas (sin importar tildes, mayusculas ni espacios alrededor); si falta alguna, se
 rechaza con "Columnas faltantes" antes de revisar filas:
 
-`código_unidad_académica`, `código_subunidad_académica`, `identificación`, `año`, `título`, `idioma`, `revista`,
-`editorial`, `doi`, `issn`, `isbn`, `volumen`, `issue`, `primera_página`, `última_página`, `pais_producto`,
-`entidad_premiadora`, `ranking`.
+`identificación`, `año`, `título`, `idioma`, `revista`, `editorial`, `doi`, `issn`, `isbn`, `volumen`, `issue`,
+`primera_página`, `última_página`, `pais_producto`, `entidad_premiadora`, `ranking`.
 
 - Una columna sin nombre con datos es error. Cualquier otra columna adicional se ignora.
-- `tipo_documento` ya no hace parte de la plantilla: si el archivo la trae, se elimina al leerlo. No genera errores ni
-  advertencias, no aparece en el Excel anotado y no se guarda.
+- `código_unidad_académica`, `código_subunidad_académica` y `tipo_documento` ya no hacen parte de la plantilla: si el
+  archivo las trae (con o sin tildes, mayusculas o espacios), se eliminan al leerlo. No generan errores ni
+  advertencias, no aparecen en el Excel anotado y no se guardan.
 
 ## Campos obligatorios (vacio = error)
 
@@ -51,17 +51,15 @@ Un campo vacio genera un solo error: los demas validadores ignoran las celdas va
 ## Campos con validacion de formato (invalido = error)
 
 - `año`: numerico (se acepta `2020`, `"2020"` o `2020.0`) y no posterior al año actual.
-- `código_unidad_académica`, `código_subunidad_académica`: solo letras, numeros, `_` y `-`. Es el mismo validador de
-  Staff (`unit_validator`), con el mismo resultado para ambos archivos.
 
 ## Advertencias
 
 - `idioma` fuera de ISO 639-1 (dos letras, ej. `es`, `en`): una por fila.
 - `pais_producto` fuera de ISO 3166-1 alfa-2 (dos letras, ej. `CO`, `US`): una por fila.
-- `código_unidad_académica` y `ranking` son opcionales: si estan vacios, una sola advertencia por columna
-  ("La columna ranking está vacía en N filas"), nunca un error.
+- `ranking` es opcional: si esta vacio, una sola advertencia para la columna ("La columna ranking está vacía en N
+  filas"), nunca un error.
 
-`unidad_académica` y `subunidad_académica` (nombres) no hacen parte del CIARP; sus reglas solo aplican a Staff.
+Las unidades academicas (codigos y nombres) no hacen parte del CIARP; sus reglas solo aplican a Staff.
 
 ## Duplicados
 
@@ -79,15 +77,18 @@ Un campo vacio genera un solo error: los demas validadores ignoran las celdas va
 ## Archivo guardado
 
 - Sin columnas eliminadas, se guarda el archivo cargado tal cual.
-- Si traia `tipo_documento`, se guarda una copia procesada sin esa columna.
+- Si traia alguna columna eliminada (`código_unidad_académica`, `código_subunidad_académica`, `tipo_documento`), se
+  guarda una copia procesada sin esas columnas.
 
 ## Practica recomendada en el repositorio
 
 - Actualizar este documento junto con cualquier cambio en `ciarp_validator`, `ciarp_required_fields_validator` o los
-  validadores compartidos con Staff (`unit_validator`, `year_validator`).
+  validadores compartidos con Staff (`year_validator`).
 
 ## Historial
 
 - 2026-11-09: Primera version formal del documento para CIARP: `tipo_documento` fuera de la plantilla,
   `código_unidad_académica` opcional, errores y advertencias de columnas vacias agrupados por columna, PDF con
   advertencias detalladas y criterio de duplicados.
+- 2026-11-11: `código_unidad_académica` y `código_subunidad_académica` salen de la plantilla, como `tipo_documento`:
+  se eliminan al leer el archivo, sin validaciones, y no se guardan.

@@ -60,7 +60,9 @@ def process_ciarp_file(
             "msg": f"Error al leer el archivo Excel: {str(e)}",
         }
 
-    removed = [c for c in df.columns if normalize_key(c).replace(" ", "_") in ciarp_validator.REMOVED_COLUMNS]
+    # Both sides without accents: "Código Unidad Académica" and "codigo_unidad_academica" are the same column.
+    removed_keys = {normalize_key(c) for c in ciarp_validator.REMOVED_COLUMNS}
+    removed = [c for c in df.columns if normalize_key(c).replace(" ", "_") in removed_keys]
     df = df.drop(columns=removed)
 
     pdf_base64: Optional[str] = None

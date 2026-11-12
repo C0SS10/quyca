@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from quyca.validators import base_validator
 
-# código_unidad_académica is optional (an empty one is only a warning) and tipo_documento left the template.
+# ranking is optional (an empty one is only a warning); the academic unit codes and tipo_documento left the template.
 REQUIRED_FIELDS_CIARP = [
     "identificación",
     "año",
