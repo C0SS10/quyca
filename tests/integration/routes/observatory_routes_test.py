@@ -143,3 +143,21 @@ def test_a_failure_of_the_database_is_a_generic_500(client: FlaskClient, reposit
 
     assert response.status_code == 500
     assert response.get_json() == {"error": "Internal server error"}
+
+
+@pytest.mark.usefixtures("configured")
+@pytest.mark.parametrize("slug", ["atlas-udea", "vri-udea"])
+def test_both_slugs_serve_the_bundle_and_the_cut(client: FlaskClient, repository: MagicMock, slug: str) -> None:
+    bundle = client.get(f"/observatories/{slug}/boards/1/bundle", headers={"Accept-Encoding": "gzip"})
+    cached = client.get(f"/observatories/{slug}/boards/1/bundle", headers={"If-None-Match": ETAG})
+    cut = client.get(f"/observatories/{slug}/cut")
+
+    assert bundle.status_code == 200 and bundle.headers["ETag"] == ETAG
+    assert cached.status_code == 304
+    assert cut.status_code == 200
+
+
+@pytest.mark.usefixtures("configured")
+def test_an_unknown_slug_is_still_404(client: FlaskClient, repository: MagicMock) -> None:
+    assert client.get("/observatories/otro/boards/1/bundle").status_code == 404
+    assert client.get("/observatories/otro/cut").status_code == 404
