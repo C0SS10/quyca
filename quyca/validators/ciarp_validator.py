@@ -8,19 +8,16 @@ from quyca.validators import base_validator
 from quyca.validators import year_validator
 from quyca.validators import language_validator
 from quyca.validators import country_validator
-from quyca.validators import unit_validator
 from quyca.validators import error_grouper
 from quyca.validators.ciarp_required_fields_validator import REQUIRED_FIELDS_CIARP
 
 # Optional columns whose empty cells are reported once per column, as a warning.
-WARNING_EMPTY_FIELDS = ["código_unidad_académica", "ranking"]
+WARNING_EMPTY_FIELDS = ["ranking"]
 
 # Columns that left the template: when a file still has them they are dropped, never validated nor saved.
-REMOVED_COLUMNS = ["tipo_documento"]
+REMOVED_COLUMNS = ["código_unidad_académica", "código_subunidad_académica", "tipo_documento"]
 
 REQUIRED_COLUMNS = [
-    "código_unidad_académica",
-    "código_subunidad_académica",
     "identificación",
     "año",
     "título",
@@ -118,8 +115,6 @@ def validate_row(row: dict, index: int) -> Dict[str, List[Dict[str, Any]]]:
 
     warnings.extend(language_validator.validate(row, index))
     warnings.extend(country_validator.validate(row, index))
-
-    errors.extend(unit_validator.validate(row, index))
 
     return {"errors": errors, "warnings": warnings}
 

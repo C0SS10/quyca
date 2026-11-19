@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from quyca.validators import staff_validator
 
 
@@ -114,6 +115,49 @@ def test_staff_validator_accepts_catalog_aliases_and_desconocido_without_noise()
         w.get("columna") in {"nivel_académico", "tipo_contrato", "categoría_laboral", "sexo"}
         for w in result["warnings"]
     )
+
+
+def test_canonical_columns_renames_header_variants_and_keeps_the_first_of_a_repeated_column() -> None:
+    df = pd.DataFrame(
+        [["CC", 1, 2, "Ana", "Pérez", "titular", "x"]],
+        columns=[
+            "Tipo  Documento",
+            "Identificacion",
+            "identificación",
+            "​Nombre Completo",
+            "primer apellido",
+            "Categoría - Laboral",
+            "otra",
+        ],
+    )
+
+    canonical = staff_validator.canonical_columns(df)
+
+    assert canonical.columns.tolist() == [
+        "tipo_documento",
+        "identificación",
+        "nombre_completo",
+        "primer_apellido",
+        "categoría_laboral",
+        "otra",
+    ]
+    assert canonical.iloc[0].tolist() == ["CC", 1, "Ana", "Pérez", "titular", "x"]
+
+
+@pytest.mark.parametrize("category", ["decano", "director", "jefe", "administrativo"])
+def test_staff_validator_accepts_foreign_documents_and_management_categories(category: str) -> None:
+    row = {
+        "tipo_documento": "documento extranjero",
+        "identificación": "X1234567",
+        "primer_apellido": "Pérez",
+        "nombres": "Ana",
+        "categoría_laboral": category,
+    }
+
+    result = staff_validator.validate_row(row, 0)
+
+    assert [e for e in result["errors"] if e["columna"] in {"tipo_documento", "identificación"}] == []
+    assert [w for w in result["warnings"] if w["columna"] == "categoría_laboral"] == []
 
 
 def test_findings_point_to_the_row_of_the_original_sheet() -> None:

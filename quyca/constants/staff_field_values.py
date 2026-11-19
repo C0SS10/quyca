@@ -8,6 +8,7 @@ The normalizer imports the maps (e.g. DOCUMENT_TYPE_MAP).
 DOCUMENT_TYPES = {
     "cédula de ciudadanía",
     "cédula de extranjería",
+    "documento extranjero",
     "pasaporte",
 }
 
@@ -28,11 +29,13 @@ DOCUMENT_TYPE_MAP: dict[str, str] = {
     "cédula de extranjería": "cédula de extranjería",
     "cédula extranjería": "cédula de extranjería",
     "cedula extranjeria": "cédula de extranjería",
-    "de": "cédula de extranjería",
-    "d.e": "cédula de extranjería",
-    "d.e.": "cédula de extranjería",
     "documento de extranjería": "cédula de extranjería",
     "doc. extranjería": "cédula de extranjería",
+    # documento extranjero
+    "documento extranjero": "documento extranjero",
+    "de": "documento extranjero",
+    "d.e": "documento extranjero",
+    "d.e.": "documento extranjero",
     # pasaporte
     "ps": "pasaporte",
     "pas": "pasaporte",
@@ -222,6 +225,10 @@ JOB_CATEGORIES = {
     "instructor investigador asociado",
     "profesor emérito",
     "ordinario",
+    "decano",
+    "director",
+    "jefe",
+    "administrativo",
 }
 
 JOB_CATEGORY_MAP: dict[str, str] = {
@@ -260,6 +267,11 @@ JOB_CATEGORY_MAP: dict[str, str] = {
     "emérito": "profesor emérito",
     # ordinario
     "ordinario": "ordinario",
+    # management and staff roles, without variants for now
+    "decano": "decano",
+    "director": "director",
+    "jefe": "jefe",
+    "administrativo": "administrativo",
 }
 
 SEX = {

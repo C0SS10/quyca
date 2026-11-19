@@ -113,8 +113,9 @@ def process_staff_file(
 
     df_original = df.copy()
 
-    # 2. Structural cleaning — always, before any validation
-    df = staff_normalizer.clean(df)
+    # 2. Structural cleaning — always, before any validation. Canonical headers first: the cleaning, the mapping and
+    # the saved file look columns up by their canonical name, so a header the validation accepts is never dropped.
+    df = staff_normalizer.clean(staff_validator.canonical_columns(df))
 
     # 3. Semantic mapping — always, so validators see canonical values
     df, changelog = staff_normalizer.map_values(df)
@@ -220,7 +221,7 @@ def process_staff_file(
     # 7. Expose normalized df for saving — only when no errors
     if staff_report.total_errors == 0:
         result["df_original"] = df_original
-        result["df_normalized"] = normalized_df  # required-schema only, consumed by handle_staff_upload
+        result["df_normalized"] = normalized_df  # every Staff column of the file, consumed by handle_staff_upload
 
     return result
 
