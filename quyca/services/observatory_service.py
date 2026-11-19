@@ -4,8 +4,12 @@ from datetime import date, datetime
 from quyca.exceptions import NotEntityException, ObservatoryNotLoadedException
 from quyca.repositories import observatory_repository
 
+CANONICAL_SLUG = "atlas-udea"
+SLUG_ALIASES = {
+    "vri-udea": CANONICAL_SLUG
+}  # the previous slug keeps answering the same, so clients can migrate in any order
 OBSERVATORIES = {
-    "vri-udea": (1, 2, 3)
+    CANONICAL_SLUG: (1, 2, 3)
 }  # slug -> boards ("Masa crítica temática", "Colaboración, redes y hélices", "Capacidades de base UdeA")
 NOT_FOUND_MESSAGE = "El observatorio o el tablero no existe."
 NOT_LOADED_MESSAGE = "Los datos del observatorio aún no están cargados."
@@ -27,7 +31,7 @@ MONTHS = [
 
 def get_bundle(slug: str, board: int) -> dict:
     """The bundle of a board for the HTTP layer: its ETag and the gzip bytes. 404 for an unknown observatory or board."""
-    if board not in OBSERVATORIES.get(slug, ()):
+    if board not in OBSERVATORIES.get(_resolve_slug(slug), ()):
         raise NotEntityException(NOT_FOUND_MESSAGE)
     bundle = observatory_repository.get_bundle(board)
     if bundle is None:
@@ -37,6 +41,10 @@ def get_bundle(slug: str, board: int) -> dict:
         "gzip": bundle["payload"],
         "load_id": bundle["load_id"],
     }
+
+
+def _resolve_slug(slug: str) -> str:
+    return SLUG_ALIASES.get(slug, slug)
 
 
 def gunzip(payload: bytes) -> bytes:
@@ -54,7 +62,7 @@ def etag_matches(if_none_match: str | None, etag: str) -> bool:
 
 def get_cut(slug: str) -> dict:
     """The dates of the loaded data and the footer text of the three boards."""
-    if slug not in OBSERVATORIES:
+    if _resolve_slug(slug) not in OBSERVATORIES:
         raise NotEntityException(NOT_FOUND_MESSAGE)
     cut = observatory_repository.get_cut()
     if cut is None:

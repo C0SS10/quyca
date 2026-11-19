@@ -118,3 +118,17 @@ def test_a_load_without_sources_still_answers_the_cut(repository: MagicMock) -> 
     repository.get_cut_sources.return_value = []
 
     assert observatory_service.get_cut("vri-udea")["fuentes"] == []
+
+
+@pytest.mark.parametrize("slug", ["atlas-udea", "vri-udea"])
+def test_the_canonical_slug_and_its_alias_answer_the_same(repository: MagicMock, slug: str) -> None:
+    bundle = observatory_service.get_bundle(slug, 2)
+
+    assert bundle["etag"] == '"20261104-0123456789ab"'
+    assert observatory_service.get_cut(slug)["texto"] == observatory_service.get_cut("atlas-udea")["texto"]
+
+
+@pytest.mark.parametrize("slug", ["atlas-udea", "vri-udea"])
+def test_both_slugs_reject_a_board_that_does_not_exist(repository: MagicMock, slug: str) -> None:
+    with pytest.raises(NotEntityException):
+        observatory_service.get_bundle(slug, 4)
