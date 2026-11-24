@@ -347,27 +347,28 @@ def set_status_filters(pipeline: list, status: str | None) -> None:
 
 OPENALEX = "https://openalex.org/"
 TOPIC_LEVEL_FIELDS = (
-    (OPENALEX + "domains/", "primary_topic.domain.id"),
-    (OPENALEX + "fields/", "primary_topic.field.id"),
-    (OPENALEX + "subfields/", "primary_topic.subfield.id"),
+    (OPENALEX + "domains/", "domain.id"),
+    (OPENALEX + "fields/", "field.id"),
+    (OPENALEX + "subfields/", "subfield.id"),
 )
 
 
-def topic_filter_field(topic_id: str) -> str:
-    for prefix, mongo_field in TOPIC_LEVEL_FIELDS:
+def topic_filter_field(topic_id: str, topic_path: str = "primary_topic") -> str:
+    for prefix, level_field in TOPIC_LEVEL_FIELDS:
         if topic_id.startswith(prefix):
-            return mongo_field
-    return "primary_topic.id"
+            return f"{topic_path}.{level_field}"
+    return f"{topic_path}.id"
 
 
-def set_topic_filters(pipeline: list, topics: str | None) -> None:
+def set_topic_filters(pipeline: list, topics: str | None, topic_path: str = "primary_topic") -> None:
+    """`topic_path` is where the OpenAlex topics live: `primary_topic` in works, the `topics` array in sources."""
     if not topics:
         return
     ids_by_field: dict[str, list[str]] = {}
     for topic in topics.split(","):
         topic = topic.strip()
         if topic:
-            ids_by_field.setdefault(topic_filter_field(topic), []).append(topic)
+            ids_by_field.setdefault(topic_filter_field(topic, topic_path), []).append(topic)
     if not ids_by_field:
         return
     match_filters = [{field: {"$in": ids}} for field, ids in ids_by_field.items()]
