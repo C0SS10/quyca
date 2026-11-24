@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 from quyca.constants.source_types import NORMALIZED_TYPE_MAPPING, QUARTILE_MAPPING, TYPE_DISPLAY_MAPPING
 from quyca.models.source_model import Source
+from quyca.parsers.work_parser import topic_tree_to_list
 
 
 def parse_source(source: Source) -> dict[str, Any]:
@@ -213,24 +214,30 @@ def parse_license_types(license_types: list) -> list:
 
 def parse_topic_filter(topics: list) -> list:
     """
-    Transforms the result of the topics pipeline into a formatted structure.
+    Builds the domain > field > subfield > topic tree, in the same format as the works filter, from the nodes of
+    TOPICS_FILTER_PIPELINE: [{"_id": "https://...", "display_name": "...", "parent": "https://..." | None, "count": 10}].
 
-    Parameters
-    ----------
-        topics: List with aggregation results [{"_id": "https://...", "count": 10, "display_name": "..."}, ...]
-
-    Returns
-    -------
-        Formatted list [{"value": "https://...", "title": "...", "count": 10}, ...]
+    Each node keeps its own count (sources that have it), which is not the sum of its children. A node whose parent
+    is not in the list is left out.
     """
-    parsed_topics = []
-
+    nodes = {
+        topic["_id"]: {
+            "value": topic["_id"],
+            "title": topic["display_name"],
+            "count": topic.get("count", 0),
+            "children": {},
+        }
+        for topic in topics
+        if topic.get("_id") and topic.get("display_name")
+    }
+    roots: dict = {}
     for topic in topics:
-        topic_id = topic.get("_id")
-        display_name = topic.get("display_name")
-        count = topic.get("count", 0)
-
-        if topic_id and display_name:
-            parsed_topics.append({"value": topic_id, "title": display_name, "count": count})
-
-    return parsed_topics
+        node = nodes.get(topic.get("_id"))
+        parent = topic.get("parent")
+        if node is None:
+            continue
+        if parent is None:
+            roots[node["value"]] = node
+        elif parent in nodes:
+            nodes[parent]["children"][node["value"]] = node
+    return topic_tree_to_list(roots)
