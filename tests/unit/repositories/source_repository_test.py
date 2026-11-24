@@ -1,6 +1,9 @@
 import time
+import mongomock
 import pytest
+from quyca.parsers.source_parser import parse_topic_filter
 from quyca.repositories.search_source_filters_repository import (
+    TOPICS_FILTER_PIPELINE,
     set_scimago_quartiles,
     set_apc_range,
     set_open_access_routes,
@@ -231,5 +234,103 @@ def test_set_topics_strips_and_filters_blanks():
     set_topics(pipeline, " https://openalex.org/T10017 , , https://openalex.org/T14434 ")
 
     assert pipeline == [
-        {"$match": {"topics.id": {"$in": ["https://openalex.org/T10017", "https://openalex.org/T14434"]}}}
+        {"$match": {"$or": [{"topics.id": {"$in": ["https://openalex.org/T10017", "https://openalex.org/T14434"]}}]}}
+    ]
+
+
+OPENALEX = "https://openalex.org/"
+
+
+def openalex_topic(topic: str, subfield: str, field: str, domain: str) -> dict:
+    return {
+        "id": OPENALEX + topic,
+        "display_name": topic,
+        "subfield": {"id": OPENALEX + "subfields/" + subfield, "display_name": "Subfield " + subfield},
+        "field": {"id": OPENALEX + "fields/" + field, "display_name": "Field " + field},
+        "domain": {"id": OPENALEX + "domains/" + domain, "display_name": "Domain " + domain},
+    }
+
+
+def sources_collection() -> mongomock.Collection:
+    collection = mongomock.MongoClient()["impactu"]["sources"]
+    collection.insert_many(
+        [
+            {
+                "_id": "two-topics-same-subfield",
+                "topics": [openalex_topic("T1", "3304", "33", "2"), openalex_topic("T2", "3304", "33", "2")],
+            },
+            {"_id": "one-topic", "topics": [openalex_topic("T1", "3304", "33", "2")]},
+            {"_id": "other-domain", "topics": [openalex_topic("T3", "2739", "27", "4")]},
+            {"_id": "no-hierarchy", "topics": [{"id": OPENALEX + "T9", "display_name": "T9"}]},
+            {"_id": "no-topics", "topics": []},
+        ]
+    )
+    return collection
+
+
+@pytest.mark.parametrize(
+    "topics, expected",
+    [
+        ("https://openalex.org/domains/2", ["one-topic", "two-topics-same-subfield"]),
+        ("https://openalex.org/fields/27", ["other-domain"]),
+        ("https://openalex.org/subfields/3304", ["one-topic", "two-topics-same-subfield"]),
+        ("https://openalex.org/T2", ["two-topics-same-subfield"]),
+        ("https://openalex.org/T2,https://openalex.org/domains/4", ["other-domain", "two-topics-same-subfield"]),
+    ],
+)
+def test_set_topics_filters_sources_by_domain_field_subfield_or_topic(topics, expected):
+    pipeline: list = []
+
+    set_topics(pipeline, topics)
+
+    assert sorted(source["_id"] for source in sources_collection().aggregate(pipeline)) == expected
+
+
+def test_topics_filter_tree_counts_each_source_once_per_node():
+    nodes = list(sources_collection().aggregate(TOPICS_FILTER_PIPELINE))
+
+    assert parse_topic_filter(nodes) == [
+        {
+            "value": OPENALEX + "domains/2",
+            "title": "Domain 2",
+            "count": 2,
+            "children": [
+                {
+                    "value": OPENALEX + "fields/33",
+                    "title": "Field 33",
+                    "count": 2,
+                    "children": [
+                        {
+                            "value": OPENALEX + "subfields/3304",
+                            "title": "Subfield 3304",
+                            "count": 2,
+                            "children": [
+                                {"value": OPENALEX + "T1", "title": "T1", "count": 2},
+                                {"value": OPENALEX + "T2", "title": "T2", "count": 1},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        },
+        {
+            "value": OPENALEX + "domains/4",
+            "title": "Domain 4",
+            "count": 1,
+            "children": [
+                {
+                    "value": OPENALEX + "fields/27",
+                    "title": "Field 27",
+                    "count": 1,
+                    "children": [
+                        {
+                            "value": OPENALEX + "subfields/2739",
+                            "title": "Subfield 2739",
+                            "count": 1,
+                            "children": [{"value": OPENALEX + "T3", "title": "T3", "count": 1}],
+                        }
+                    ],
+                }
+            ],
+        },
     ]

@@ -252,3 +252,39 @@ def test_parse_topic_filter_skips_incomplete_entries(topic):
     result = parse_topic_filter([topic])
 
     assert result == []
+
+
+def test_parse_topic_filter_nests_each_node_under_its_parent_and_keeps_its_count():
+    nodes = [
+        {"_id": "https://topic/T1", "display_name": "Topic", "parent": "https://subfield/1", "count": 2},
+        {"_id": "https://domain/1", "display_name": "Domain", "parent": None, "count": 2},
+        {"_id": "https://subfield/1", "display_name": "Subfield", "parent": "https://domain/1", "count": 2},
+        {"_id": "https://topic/T2", "display_name": "Other topic", "parent": "https://subfield/1", "count": 1},
+    ]
+
+    result = parse_topic_filter(nodes)
+
+    assert result == [
+        {
+            "value": "https://domain/1",
+            "title": "Domain",
+            "count": 2,
+            "children": [
+                {
+                    "value": "https://subfield/1",
+                    "title": "Subfield",
+                    "count": 2,
+                    "children": [
+                        {"value": "https://topic/T1", "title": "Topic", "count": 2},
+                        {"value": "https://topic/T2", "title": "Other topic", "count": 1},
+                    ],
+                }
+            ],
+        }
+    ]
+
+
+def test_parse_topic_filter_drops_nodes_whose_parent_is_missing():
+    nodes = [{"_id": "https://topic/T1", "display_name": "Topic", "parent": "https://subfield/unknown", "count": 1}]
+
+    assert parse_topic_filter(nodes) == []

@@ -2,7 +2,58 @@ from datetime import datetime, timezone
 from quyca.constants.source_types import NORMALIZED_TYPE_MAPPING
 from quyca.models.base_model import QueryParams
 from quyca.clients.mongo import database
-from quyca.repositories import base_repository
+from quyca.repositories import base_repository, search_work_filters_repository
+
+# Each level of a topic, as (node, parent id). The domain is the root.
+TOPIC_TREE_LEVELS = (
+    ("$$t.domain", None),
+    ("$$t.field", "$$t.domain.id"),
+    ("$$t.subfield", "$$t.field.id"),
+    ("$$t", "$$t.subfield.id"),
+)
+
+# A source lists several topics, often in the same subfield, so counts are not summed up the tree: `$setUnion` keeps
+# each node once per source and every node counts the sources that have it. Topics without their full hierarchy are
+# left out, as in works.
+TOPICS_FILTER_PIPELINE: list[dict] = [
+    {"$match": {"topics": {"$exists": True, "$nin": [None, []]}}},
+    {
+        "$project": {
+            "topics": {
+                "$filter": {
+                    "input": "$topics",
+                    "as": "t",
+                    "cond": {"$and": ["$$t.id", "$$t.subfield.id", "$$t.field.id", "$$t.domain.id"]},
+                }
+            }
+        }
+    },
+    {
+        "$project": {
+            "nodes": {
+                "$setUnion": [
+                    {
+                        "$map": {
+                            "input": "$topics",
+                            "as": "t",
+                            "in": {"id": f"{node}.id", "display_name": f"{node}.display_name", "parent": parent},
+                        }
+                    }
+                    for node, parent in TOPIC_TREE_LEVELS
+                ]
+            }
+        }
+    },
+    {"$unwind": "$nodes"},
+    {
+        "$group": {
+            "_id": "$nodes.id",
+            "count": {"$sum": 1},
+            "display_name": {"$first": "$nodes.display_name"},
+            "parent": {"$first": "$nodes.parent"},
+        }
+    },
+]
 
 
 def build_sources_match(query_params: QueryParams) -> list[dict]:
@@ -60,19 +111,7 @@ def get_sources_available_filters(query_params: QueryParams) -> dict:
                     {"$group": {"_id": "$open_access_status", "count": {"$sum": 1}}},
                     {"$sort": {"_id": 1}},
                 ],
-                "topics": [
-                    {"$match": {"topics": {"$exists": True, "$nin": [None, []]}}},
-                    {"$project": {"topics": 1}},
-                    {"$unwind": "$topics"},
-                    {
-                        "$group": {
-                            "_id": "$topics.id",
-                            "count": {"$sum": 1},
-                            "display_name": {"$first": "$topics.display_name"},
-                        }
-                    },
-                    {"$sort": {"count": -1}},
-                ],
+                "topics": TOPICS_FILTER_PIPELINE,
             }
         }
     ]
@@ -341,25 +380,8 @@ def set_license_types(pipeline: list, license_filters: str | None) -> None:
 
 def set_topics(pipeline: list, topic_filters: str | None) -> None:
     """
-    Filters sources by their primary topics (from works collection).
+    Filters sources by their OpenAlex topics, or by the domain, field or subfield of any of them, like works do.
 
-    Parameters
-    ----------
-    - pipeline: MongoDB aggregation pipeline
-    - topic_filters: Comma-separated string of topic IDs (OpenAlex URLs)
-
-    E.g topic_filters = "https://openalex.org/T10017,https://openalex.org/T14434"
+    E.g topic_filters = "https://openalex.org/T10017,https://openalex.org/subfields/3304,https://openalex.org/domains/2"
     """
-    if not topic_filters:
-        return
-
-    topic_ids = []
-    for topic_id in topic_filters.split(","):
-        topic_id = topic_id.strip()
-        if topic_id:
-            topic_ids.append(topic_id)
-
-    if not topic_ids:
-        return
-
-    pipeline.append({"$match": {"topics.id": {"$in": topic_ids}}})
+    search_work_filters_repository.set_topic_filters(pipeline, topic_filters, "topics")
