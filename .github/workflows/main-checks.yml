@@ -1,0 +1,84 @@
+name: main-checks
+
+# Solo protege main: corre en cada PR hacia main y en el push que deja el merge.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Un push nuevo a la PR cancela la corrida anterior; cada merge a main corre completo.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Misma versión que el Dockerfile.
+      - name: Install Poetry
+        run: pipx install poetry==2.5.1
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: poetry
+
+      - name: Check lock file
+        run: poetry check --lock
+
+      - name: Install dependencies
+        id: install
+        run: poetry install --no-interaction
+
+      # Informativo: el lock no se cambia en CI, cada actualización se prueba en su propia PR.
+      - name: Report outdated dependencies
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          {
+            echo "### Dependencias directas desactualizadas"
+            echo '```'
+            poetry show --outdated --top-level
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Cada chequeo corre aunque falle el anterior, así la PR muestra todos los problemas de una vez.
+      - name: Lint (black)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: poetry run black --line-length 120 --check .
+
+      - name: Lint (autoflake)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: >-
+          poetry run autoflake --check --quiet --recursive
+          --remove-unused-variables --remove-all-unused-imports
+          --remove-duplicate-keys --ignore-init-module-imports .
+
+      - name: Type check (mypy)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: poetry run mypy quyca/
+
+      - name: Security, code (bandit)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pipx run --spec bandit==1.9.4 bandit --recursive quyca --severity-level medium --confidence-level medium
+
+      - name: Security, dependencies (pip-audit)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          poetry run pip freeze --exclude-editable > "$RUNNER_TEMP/requirements.txt"
+          pipx run --spec pip-audit==2.10.1 pip-audit --requirement "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
+
+      # tests/api necesita Mongo y Elasticsearch de dev, que no son accesibles desde GitHub.
+      - name: Tests (unit + integration)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: poetry run pytest --cov --cov-report=term:skip-covered

@@ -70,7 +70,6 @@ instance/
 .scrapy
 
 # Sphinx documentation
-quyca/application/docs/_build/
 
 # PyBuilder
 target/
@@ -135,6 +134,16 @@ dmypy.json
 mongo-data/
 db/
 storage/
+reports/
 
 # Pickle
 token.pickle
+# Credentials and keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*

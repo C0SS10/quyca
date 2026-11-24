@@ -1,0 +1,25 @@
+from typing import List, Dict, Any
+from quyca.validators import base_validator
+
+# ranking is optional (an empty one is only a warning); the academic unit codes and tipo_documento left the template.
+REQUIRED_FIELDS_CIARP = [
+    "identificación",
+    "año",
+    "título",
+]
+
+
+def validate(row: dict, index: int) -> List[Dict[str, Any]]:
+    errors = []
+    for field in REQUIRED_FIELDS_CIARP:
+        value = row.get(field)
+        if base_validator.is_empty(value):
+            errors.append(
+                {
+                    "fila": index,
+                    "columna": field,
+                    "detalle": "Campo obligatorio vacío",
+                    "valor": "Vacío",
+                }
+            )
+    return errors
