@@ -34,5 +34,6 @@ def parse_geolocations_search(geolocations: List) -> List:
         "groups",
         "institutions",
         "cities",
+        "states",
     ]
     return [geo.model_dump(exclude_none=True, exclude=exclude) for geo in geolocations]

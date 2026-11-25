@@ -1,6 +1,6 @@
 from quyca.exceptions import InvalidParamException
 
-GEO_TYPES = ("city", "state")
+GEO_TYPES = ("city", "state", "country")
 
 
 def validate_sort(sort: str | None) -> None:
@@ -21,4 +21,4 @@ def validate_years(years: str | None) -> None:
 
 def validate_geo_type(geo_type: str) -> None:
     if geo_type not in GEO_TYPES:
-        raise InvalidParamException("Invalid geo_type. Allowed values: city, state")
+        raise InvalidParamException(f"Invalid geo_type. Allowed values: {', '.join(GEO_TYPES)}")
