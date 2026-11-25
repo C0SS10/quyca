@@ -1,4 +1,4 @@
-from typing import Any, Generator, Mapping
+from typing import Any, Generator, Iterable, Mapping
 
 from pymongo.command_cursor import CommandCursor
 
@@ -16,6 +16,20 @@ def get_affiliation_by_id(affiliation_id: str, pipeline_params: dict | None = No
     if not affiliation:
         raise NotEntityException(f"The affiliation with id {affiliation_id} does not exist.")
     return Affiliation(**affiliation)
+
+
+def get_logos(affiliation_ids: Iterable[str]) -> dict[str, tuple[int, str]]:
+    """(products_count, logo url) of each affiliation that has an external_url with source "logo"."""
+    cursor = database["affiliations"].find(
+        {"_id": {"$in": list(set(affiliation_ids))}, "external_urls.source": "logo"},
+        {"external_urls": 1, "products_count": 1},
+    )
+    return {
+        affiliation["_id"]: (affiliation.get("products_count") or 0, url["url"])
+        for affiliation in cursor
+        for url in affiliation["external_urls"]
+        if url.get("source") == "logo"
+    }
 
 
 def get_affiliations_by_parent(parent_id: str, affiliation_type: str) -> Generator[Affiliation, None, None]:
