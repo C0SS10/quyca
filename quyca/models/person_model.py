@@ -109,6 +109,7 @@ class Person(BaseModel):
     updated: list[Updated] | None = Field(default_factory=list)
     h_index: int | None = None
     h5_index: int | None = None
+    logo: str | None = None
 
     @field_validator("external_ids")
     @classmethod
