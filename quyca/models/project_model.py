@@ -18,7 +18,7 @@ from quyca.models.base_model import (
 class Project(BaseModel):
     model_config = ConfigDict(json_encoders={ObjectId: str})
 
-    id: PyObjectId = Field(alias="_id")
+    id: str | PyObjectId = Field(alias="_id")
     abstract: str | None = None
     authors_count: int | None = Field(default_factory=int, alias="author_count")
     authors: list[Author] | str | None = None

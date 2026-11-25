@@ -12,7 +12,7 @@ from quyca.exceptions import NotEntityException
 def get_project_by_id(project_id: str, pipeline_params: dict | None = None) -> Project:
     fields = (pipeline_params or {}).get("project")
     projection = {field: 1 for field in fields} if fields else None
-    project = database["projects"].find_one({"_id": base_repository.to_object_id(project_id)}, projection)
+    project = database["projects"].find_one({"_id": base_repository.id_match(project_id)}, projection)
     if not project:
         raise NotEntityException(f"The project with id {project_id} does not exist.")
     return Project(**project)
