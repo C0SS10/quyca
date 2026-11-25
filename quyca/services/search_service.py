@@ -14,7 +14,9 @@ from quyca.constants.summary_rules import (
     PROJECT_SUMMARY_FIELDS,
     SOURCE_SUMMARY_FIELDS,
 )
+from quyca.services.affiliation_service import set_affiliation_logos
 from quyca.services.base_service import build_pipeline_params, build_works_pipeline_params, get_entity_data
+from quyca.services.person_service import set_person_logos
 from quyca.repositories import (
     search_affiliation_filters_repository,
     search_repository,
@@ -27,9 +29,10 @@ from quyca.validators import search_validator
 def search_persons(query_params: QueryParams, current_url: str) -> dict:
     search_validator.validate_sort(query_params.sort)
     start_time = time.time()
-    persons = search_repository.search_persons(
-        query_params, build_pipeline_params(query_params.view, PERSON_SUMMARY_FIELDS)
+    persons = list(
+        search_repository.search_persons(query_params, build_pipeline_params(query_params.view, PERSON_SUMMARY_FIELDS))
     )
+    set_person_logos(persons)
     total_count = search_repository.search_count_persons(query_params)
     return build_metadata(
         persons, total_count, query_params, start_time, current_url, parser=search_parser.parse_persons_search
@@ -56,9 +59,12 @@ def search_works(query_params: QueryParams, current_url: str) -> dict:
 def search_affiliations(query_params: QueryParams, affiliation_type: str, current_url: str) -> dict:
     search_validator.validate_sort(query_params.sort)
     start_time = time.time()
-    affiliations = search_repository.search_affiliations(
-        affiliation_type, query_params, build_pipeline_params(query_params.view, AFFILIATION_SUMMARY_FIELDS)
+    affiliations = list(
+        search_repository.search_affiliations(
+            affiliation_type, query_params, build_pipeline_params(query_params.view, AFFILIATION_SUMMARY_FIELDS)
+        )
     )
+    set_affiliation_logos(affiliations, affiliation_type)
     total_count = search_repository.search_count_affiliations(query_params, affiliation_type)
     return build_metadata(
         affiliations,
