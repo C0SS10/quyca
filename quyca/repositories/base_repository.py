@@ -41,6 +41,11 @@ def to_object_id(value: str) -> ObjectId:
     return ObjectId(value)
 
 
+def id_match(value: str) -> str | dict:
+    """`_id` that comes in the URL: a string, or an ObjectId in documents loaded before ids became strings."""
+    return {"$in": [value, ObjectId(value)]} if ObjectId.is_valid(value) else value
+
+
 def affiliation_match(affiliation_id: str, affiliation_type: str) -> dict:
     """Documents with an author in the affiliation, provided some author affiliation has that type."""
     types = institutions_list if affiliation_type == "institution" else [affiliation_type]

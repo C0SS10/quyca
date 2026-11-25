@@ -47,19 +47,31 @@ class Identifier(BaseModel):
     COD_PRODUCTO: str | None = None
 
 
+class Occurrence(BaseModel):
+    """Id of the minciencias ETL: the CvLAC or GrupLAC (source_id) that reports the product, and that report's hash."""
+
+    source_kind: str
+    source_id: str
+    occurrence_id: str
+
+
 class ExternalId(BaseModel):
-    id: str | int | list[str] | Identifier | None = None
+    id: str | int | list[str] | Identifier | Occurrence | None = None
     provenance: str | None = None
     source: str | None = None
 
     @field_validator("id", mode="after")
     @classmethod
-    def id_validator(cls, value: str | int | list[str] | Identifier | None) -> str | int | list[str] | None:
+    def id_validator(
+        cls, value: str | int | list[str] | Identifier | Occurrence | None
+    ) -> str | int | list[str] | None:
         if isinstance(value, Identifier):
             if value.COD_PRODUCTO and value.COD_RH:
                 value = value.COD_RH + "-" + value.COD_PRODUCTO
             else:
                 value = value.COD_RH
+        if isinstance(value, Occurrence):
+            value = value.source_id + "-" + value.occurrence_id
         return value
 
     def __hash__(self) -> int:
