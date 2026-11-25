@@ -29,6 +29,8 @@ class Geo(BaseModel):
     institutions_count: int | None = None
     groups_count: int | None = None
     cities_count: int | None = None
+    states_count: int | None = None
     institutions: list[GeoRelation] | None = None
     groups: list[GeoRelation] | None = None
     cities: list[GeoRelation] | None = None
+    states: list[GeoRelation] | None = None

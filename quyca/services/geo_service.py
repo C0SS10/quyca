@@ -17,6 +17,8 @@ def get_related_affiliations_by_geo(geo_type: str, geo_id: str) -> dict:
         "institutions": [institution.model_dump() for institution in geo.institutions or []],
         "groups": [group.model_dump() for group in geo.groups or []],
     }
-    if geo_type == "state":
+    if geo_type == "country":
+        data["states"] = [state.model_dump() for state in geo.states or []]
+    if geo_type in ("state", "country"):
         data["cities"] = [city.model_dump() for city in geo.cities or []]
     return data

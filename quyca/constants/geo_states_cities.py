@@ -33,4 +33,4 @@ AFFILIATION_CITY_MAPPING = {
 }
 
 
-GEO_RELATED_FIELDS = {"institutions": 1, "groups": 1, "cities": 1}
+GEO_RELATED_FIELDS = {"institutions": 1, "groups": 1, "cities": 1, "states": 1}
