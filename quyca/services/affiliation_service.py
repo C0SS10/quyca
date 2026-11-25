@@ -5,6 +5,7 @@ from quyca.constants.institutions import institutions_list
 from quyca.constants.summary_rules import AFFILIATION_SUMMARY_FIELDS
 from quyca.models.affiliation_model import Affiliation, Relation
 from quyca.models.base_model import QueryParams
+from quyca.models.person_model import Person
 from quyca.parsers.base_parser import build_entity_metadata
 from quyca.services.base_service import build_pipeline_params
 from quyca.repositories import person_repository
@@ -23,6 +24,7 @@ def get_affiliation_by_id(affiliation_id: str, affiliation_type: str, query_para
     affiliation = affiliation_repository.get_affiliation_by_id(affiliation_id, pipeline_params)
     set_relation_external_urls(affiliation)
     set_upper_affiliations(affiliation, affiliation_type)
+    set_affiliation_logos([affiliation], affiliation_type)
     data = affiliation.model_dump(by_alias=True, exclude_none=query_params.view == "summary")
     return build_entity_metadata(data, start_time)
 
@@ -70,6 +72,30 @@ def set_upper_affiliations(affiliation: Affiliation, affiliation_type: str) -> N
         relation for relation in _get_relations(affiliation) if relation.types and relation.types[0].type in upper_types
     ]
     affiliation.affiliations = cast(list[dict | Relation], upper_affiliations)
+
+
+def set_affiliation_logos(affiliations: list[Affiliation], affiliation_type: str) -> None:
+    """Institutions show their own logo; faculties, departments and groups inherit the one of their institution."""
+    set_logos(
+        [
+            (
+                affiliation,
+                (
+                    [affiliation.id]
+                    if affiliation_type == "institution"
+                    else [relation.id for relation in _get_relations(affiliation) if relation.id]
+                ),
+            )
+            for affiliation in affiliations
+        ]
+    )
+
+
+def set_logos(candidates: list[tuple[Affiliation | Person, list[str]]]) -> None:
+    """Each entity takes the logo of its candidate affiliation with the most products, in one query for all."""
+    logos = affiliation_repository.get_logos(affiliation_id for _, ids in candidates for affiliation_id in ids)
+    for entity, ids in candidates:
+        entity.logo = max((logos[i] for i in ids if i in logos), default=(0, None))[1]
 
 
 def _dump_affiliations(affiliations: Iterable[Affiliation]) -> list[dict]:

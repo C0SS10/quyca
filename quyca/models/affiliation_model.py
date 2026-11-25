@@ -16,12 +16,12 @@ from quyca.models.base_model import (
 
 
 class DescriptionText(BaseModel):
-    TXT_ESTADO_ARTE: str | None
-    TXT_OBJETIVOS: str | None
-    TXT_PLAN_TRABAJO: str | None
-    TXT_PROD_DESTACADA: str | None
-    TXT_RETOS: str | None
-    TXT_VISION: str | None
+    TXT_ESTADO_ARTE: str | None = None
+    TXT_OBJETIVOS: str | None = None
+    TXT_PLAN_TRABAJO: str | None = None
+    TXT_PROD_DESTACADA: str | None = None
+    TXT_RETOS: str | None = None
+    TXT_VISION: str | None = None
 
 
 class Description(BaseModel):
@@ -81,6 +81,7 @@ class Affiliation(BaseModel):
     updated: list[Updated] | None = None
     year_established: int | None = None
     name: str | None = None
+    logo: str | None = None
     affiliations: list[dict | Relation] | None = None
     h_index: int | None = None
     h5_index: int | None = None
