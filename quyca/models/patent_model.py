@@ -18,7 +18,7 @@ from quyca.models.base_model import (
 class Patent(BaseModel):
     model_config = ConfigDict(json_encoders={ObjectId: str})
 
-    id: PyObjectId = Field(alias="_id")
+    id: str | PyObjectId = Field(alias="_id")
     authors_count: int | None = Field(default_factory=int, alias="author_count")
     authors: list[Author] | str | None = None
     external_ids: list[ExternalId] | None = None
