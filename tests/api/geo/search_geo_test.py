@@ -1,6 +1,13 @@
+import unicodedata
+
 import pytest
 
 ENDPOINT = "/search/geo"
+
+
+def without_accents(name):
+    """The order of the search (name_normalized): Ávila goes with the a's, not after Zaragoza as in str.casefold."""
+    return "".join(c for c in unicodedata.normalize("NFKD", name.casefold()) if not unicodedata.combining(c))
 
 
 def assert_common_search_response(data):
@@ -42,6 +49,7 @@ def assert_external_ids_structure(external_ids):
     [
         "state",
         "city",
+        "country",
     ],
 )
 def test_search_geolocation_returns_success(client, location_type):
@@ -198,6 +206,19 @@ def test_search_geolocation_cities_response_structure(client):
     assert city["state"]["name"] == "Bogotá, D.c."
 
 
+def test_search_geolocation_countries_response_structure(client):
+    response = client.get(f"{ENDPOINT}/country?keywords=Colombia&max=10&page=1")
+
+    assert response.status_code == 200
+    country = response.get_json()["data"][0]
+
+    assert (country["id"], country["country_code"], country["name"]) == ("COL", "CO", "Colombia")
+    assert country["states_count"] >= 1
+    assert country["cities_count"] >= country["states_count"]
+    assert {"source": "wikidata", "id": "Q739"} in country["external_ids"]
+    assert not {"institutions", "groups", "cities", "states"} & set(country)
+
+
 @pytest.mark.parametrize(
     "location_type, keyword",
     [
@@ -305,7 +326,7 @@ def test_search_geolocation_alphabetical_sort(client, location_type):
 
     names = [item["name"] for item in data["data"]]
 
-    assert names == sorted(names, key=str.casefold)
+    assert names == sorted(names, key=without_accents)
 
 
 @pytest.mark.parametrize(
@@ -442,7 +463,7 @@ def test_search_geolocation_zero_max(client, location_type):
     "location_type",
     [
         "invalid",
-        "country",
+        "countries",
         "states",
         "cities",
     ],
