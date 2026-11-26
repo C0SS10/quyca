@@ -92,12 +92,14 @@ PROJECT_SUMMARY_FIELDS: list[str] = [
 ]
 
 SOURCE_SUMMARY_FIELDS: list[str] = [
+    "apc",
     "external_ids",
     "external_urls",
     "global_citations_count",
     "global_products_count",
     "keywords",
     "names",
+    "open_access_status",
     "publisher",
     "ranking",
     "subjects",

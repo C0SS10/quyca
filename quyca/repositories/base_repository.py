@@ -93,19 +93,18 @@ def set_project(pipeline: list, project: list | dict | None) -> None:
     pipeline.append({"$project": {"_id": 1, **{p: 1 for p in project}}})
 
 
-def current_source_h_index() -> dict:
-    """A source keeps one Scimago h-index per year in `ranking`; this is the one valid today (there is at most one), as
-    the h-index and quartile filters use."""
-    now = int(time.time())
-    valid_now = [{"$eq": ["$$r.source", "scimago hindex"]}, {"$lte": ["$$r.from_date", now]}]
-    current = {
+def latest_source_h_index() -> dict:
+    """A source keeps one Scimago h-index per year in `ranking`, not always in order; this is the latest one, so a
+    journal that left Scimago keeps its last h-index (the one its profile shows)."""
+    rows = {
         "$filter": {
             "input": {"$ifNull": ["$ranking", []]},
             "as": "r",
-            "cond": {"$and": valid_now + [{"$gte": ["$$r.to_date", now]}]},
+            "cond": {"$eq": ["$$r.source", "scimago hindex"]},
         }
     }
-    return {"$arrayElemAt": [{"$map": {"input": current, "as": "r", "in": "$$r.rank"}}, 0]}
+    latest = {"$first": {"$sortArray": {"input": rows, "sortBy": {"to_date": -1}}}}
+    return {"$let": {"vars": {"latest": latest}, "in": "$$latest.rank"}}
 
 
 def set_sort(pipeline: list, sort: str | None, collection: str | None = None) -> None:
@@ -290,7 +289,7 @@ def set_sort(pipeline: list, sort: str | None, collection: str | None = None) ->
         sort_field = "products_count"
     elif sort_field == "h":
         if collection == "sources":
-            pipeline.append({"$addFields": {"h_index": current_source_h_index()}})
+            pipeline.append({"$addFields": {"h_index": latest_source_h_index()}})
         sort_field = "h_index"
     elif sort_field == "h5":
         sort_field = "h5_index"
