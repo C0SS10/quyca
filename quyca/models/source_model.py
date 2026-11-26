@@ -38,6 +38,11 @@ class Waiver(BaseModel):
     url: str | None = None
 
 
+class OpenAccessStatus(BaseModel):
+    value: str | None = None
+    source: str | None = None
+
+
 class Source(BaseModel):
     model_config = ConfigDict(json_encoders={ObjectId: str})
 
@@ -58,7 +63,7 @@ class Source(BaseModel):
     licenses: list[Licence] | None = None
     names: list[Name] | None = None
     open_access_start_year: int | None = None
-    open_access_status: str | None = None
+    open_access_status: OpenAccessStatus | None = None
     plagiarism_detection: bool | None = None
     products_count: int | None = None
     publication_time_weeks: int | None = None

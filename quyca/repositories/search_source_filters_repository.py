@@ -103,7 +103,7 @@ def get_sources_available_filters(query_params: QueryParams) -> dict:
                 ],
                 "h_index_range": [
                     {"$match": {"ranking.source": "scimago hindex"}},
-                    {"$project": {"h_index": base_repository.current_source_h_index()}},
+                    {"$project": {"h_index": base_repository.latest_source_h_index()}},
                     {"$match": {"h_index": {"$ne": None}}},
                     {"$group": {"_id": None, "min_h_index": {"$min": "$h_index"}, "max_h_index": {"$max": "$h_index"}}},
                     {"$project": {"_id": 0, "min_h_index": 1, "max_h_index": 1}},
@@ -126,8 +126,8 @@ def get_sources_available_filters(query_params: QueryParams) -> dict:
                     {"$sort": {"_id": 1}},
                 ],
                 "status": [
-                    {"$match": {"open_access_status": {"$exists": True, "$ne": None}}},
-                    {"$group": {"_id": "$open_access_status", "count": {"$sum": 1}}},
+                    {"$match": {"open_access_status.value": {"$exists": True, "$ne": None}}},
+                    {"$group": {"_id": "$open_access_status.value", "count": {"$sum": 1}}},
                     {"$sort": {"_id": 1}},
                 ],
                 "topics": TOPICS_FILTER_PIPELINE,
@@ -331,7 +331,7 @@ def set_open_access_routes(pipeline: list, status: str | None) -> None:
         statuses.extend(["diamond", "gold"])
         statuses = list(set(statuses))
 
-    pipeline.append({"$match": {"open_access_status": {"$in": statuses}}})
+    pipeline.append({"$match": {"open_access_status.value": {"$in": statuses}}})
 
 
 def set_publication_time(pipeline: list, publication_time: str | None) -> None:
@@ -411,8 +411,7 @@ def set_topics(pipeline: list, topic_filters: str | None) -> None:
 
 def set_h_index_range(pipeline: list, h_index_range: str | None) -> None:
     """
-    Filters sources by their CURRENT Scimago h-index (the ranking valid today, as the quartiles), like apc_range:
-    "min,max", or a single value for the minimum.
+    Filters sources by their latest Scimago h-index, like apc_range: "min,max", or a single value for the minimum.
 
     E.g h_index_range = "50,200"
     """
@@ -425,9 +424,10 @@ def set_h_index_range(pipeline: list, h_index_range: str | None) -> None:
         )
     limits = sorted(int(value) for value in values)
     rank = {"$gte": limits[0], "$lte": limits[1]} if len(limits) == 2 else {"$gte": limits[0]}
-    now = int(datetime.now(timezone.utc).timestamp())
-    ranking = {"source": "scimago hindex", "rank": rank, "from_date": {"$lte": now}, "to_date": {"$gte": now}}
-    pipeline.append({"$match": {"ranking": {"$elemMatch": ranking}}})
+    # Some row in the range (it uses the ranking index) is needed for the latest one to be in it, which decides.
+    pipeline.append({"$match": {"ranking": {"$elemMatch": {"source": "scimago hindex", "rank": rank}}}})
+    h_index = base_repository.latest_source_h_index()
+    pipeline.append({"$match": {"$expr": {"$and": [{op: [h_index, limit]} for op, limit in rank.items()]}}})
 
 
 def set_subjects(pipeline: list, subject_filters: str | None) -> None:
