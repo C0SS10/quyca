@@ -134,8 +134,9 @@ def set_authors_affiliation_years(workables: list | Work | Patent | Project) -> 
 
 
 def build_pipeline_params(view: str, summary_fields: list[str], **extra: str) -> dict:
-    """The summary view only projects the fields its cards show."""
-    return {"project": summary_fields, **extra} if view == "summary" else {}
+    """The summary view only projects the fields its cards show; the extra params (e.g. the collection that the sort
+    needs) apply to both views."""
+    return {"project": summary_fields, **extra} if view == "summary" else dict(extra)
 
 
 def build_works_pipeline_params(query_params: QueryParams) -> dict:

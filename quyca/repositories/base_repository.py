@@ -1,4 +1,5 @@
 import re
+import time
 
 from bson import ObjectId
 from pymongo.collection import Collection
@@ -90,6 +91,21 @@ def set_project(pipeline: list, project: list | dict | None) -> None:
         return
 
     pipeline.append({"$project": {"_id": 1, **{p: 1 for p in project}}})
+
+
+def current_source_h_index() -> dict:
+    """A source keeps one Scimago h-index per year in `ranking`; this is the one valid today (there is at most one), as
+    the h-index and quartile filters use."""
+    now = int(time.time())
+    valid_now = [{"$eq": ["$$r.source", "scimago hindex"]}, {"$lte": ["$$r.from_date", now]}]
+    current = {
+        "$filter": {
+            "input": {"$ifNull": ["$ranking", []]},
+            "as": "r",
+            "cond": {"$and": valid_now + [{"$gte": ["$$r.to_date", now]}]},
+        }
+    }
+    return {"$arrayElemAt": [{"$map": {"input": current, "as": "r", "in": "$$r.rank"}}, 0]}
 
 
 def set_sort(pipeline: list, sort: str | None, collection: str | None = None) -> None:
@@ -273,6 +289,8 @@ def set_sort(pipeline: list, sort: str | None, collection: str | None = None) ->
     elif sort_field == "products":
         sort_field = "products_count"
     elif sort_field == "h":
+        if collection == "sources":
+            pipeline.append({"$addFields": {"h_index": current_source_h_index()}})
         sort_field = "h_index"
     elif sort_field == "h5":
         sort_field = "h5_index"

@@ -187,6 +187,7 @@ class QueryParams(BaseModel):
     countries: str | None = None
     fields: str | None = None
     groups_ranking: str | None = None
+    h_index_range: str | None = None
     institutions_type: str | None = None
     keywords: str | None = None
     license_type: str | None = None
@@ -198,6 +199,7 @@ class QueryParams(BaseModel):
     states: str | None = None
     scimago_quartiles: str | None = None
     source_types: str | None = None
+    subjects: str | None = None
     topics: str | None = None
     view: Literal["full", "summary"] = "full"
     years: str | None = None
