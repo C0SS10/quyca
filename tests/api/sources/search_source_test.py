@@ -1,3 +1,4 @@
+import time
 import pytest
 from typing import List
 
@@ -117,6 +118,8 @@ def test_search_sources_available_filters(client):
         "publication_time",
         "license_type",
         "topics",
+        "subjects",
+        "h_index_range",
     }
 
     assert set(data.keys()).issubset(expected_filters)
@@ -140,3 +143,36 @@ def test_search_sources_available_filters_with_params(client, query):
     assert response.status_code == 200
     data = response.get_json()
     assert isinstance(data, dict)
+
+
+def test_search_sources_by_subject_and_h_index_range_sorted_by_h(client):
+    """E.g. open access ecology journals without APC and an h-index between 50 and 300."""
+    query = "subjects=Ecology,Ecology, Evolution, Behavior and Systematics&h_index_range=50,300&status=diamond&sort=h_desc&max=50&page=1"
+    response = client.get(f"{ENDPOINT}?{query}")
+
+    assert response.status_code == 200
+    sources = response.get_json()["data"]
+    assert sources
+    now = time.time()
+    h_indexes = []
+    for source in sources:
+        current = [
+            r["rank"]
+            for r in source["ranking"]
+            if r["source"] == "scimago hindex" and r["from_date"] <= now <= r["to_date"]
+        ]
+        h_indexes.append(max(current))
+        names = {subject["name"].lower() for group in source["subjects"] for subject in group["subjects"]}
+        assert names & {"ecology", "ecology, evolution, behavior and systematics"}
+    assert min(h_indexes) >= 50 and max(h_indexes) <= 300
+    assert h_indexes == sorted(h_indexes, reverse=True)
+
+
+def test_search_sources_filters_list_subjects_and_the_h_index_range(client):
+    filters = client.get(f"{ENDPOINT}/filters?keywords=ecology&h_index_range=50,300").get_json()
+    subjects = filters["subjects"]
+
+    assert {"title": subjects[0]["value"], "value": subjects[0]["value"], "count": subjects[0]["count"]} == subjects[0]
+    assert "Ecology" in {subject["value"] for subject in subjects}
+    assert 50 <= filters["h_index_range"]["min_h_index"] <= filters["h_index_range"]["max_h_index"] <= 300
+    assert client.get(f"{ENDPOINT}?h_index_range=-1").status_code == 400

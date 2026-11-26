@@ -2,13 +2,14 @@ import pytest
 from urllib.parse import quote
 
 from quyca.clients.mongo import database
+from quyca.services.base_service import SUMMARY_AUTHORS_LIMIT
 
 random_work_id = str(database["works"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])
 random_patent_id = str(database["patents"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])
 random_project_id = str(database["projects"].aggregate([{"$sample": {"size": 1}}]).next()["_id"])
+many_authors_work_id = str(database["works"].find_one({"author_count": {"$gt": 50}}, {"_id": 1})["_id"])
 
 DETAIL_URLS = [
-    f"/work/{quote(random_work_id)}",
     f"/patent/{random_patent_id}",
     f"/project/{random_project_id}",
     "/person/0000000317",
@@ -33,6 +34,24 @@ def test_detail_answers_meta_and_a_smaller_summary(client, url):
     assert len(summary["data"]) < len(full["data"])
 
 
+@pytest.mark.parametrize("work_id", [random_work_id, many_authors_work_id])
+def test_work_summary_is_the_detail_with_only_its_first_authors(client, work_id):
+    """The work page needs every field (apc, abstract, doi, links...); only the author list is cut."""
+    url = f"/work/{quote(work_id)}"
+    full = client.get(url).get_json()["data"]
+    summary = client.get(f"{url}?view=summary").get_json()["data"]
+
+    def without_authors(work):  # the links come from a set, so their order may change
+        lists = ("external_urls", "external_ids")
+        return {
+            key: sorted(map(str, value)) if key in lists else value for key, value in work.items() if key != "authors"
+        }
+
+    assert without_authors(summary) == without_authors(full)
+    assert summary["authors"] == full["authors"][:SUMMARY_AUTHORS_LIMIT]
+    assert summary["authors_count"] == full["authors_count"]
+
+
 @pytest.mark.parametrize("url", AUTHORS_URLS)
 def test_authors_summary_keeps_only_card_fields(client, url):
     full = client.get(url).get_json()
@@ -47,7 +66,9 @@ def test_authors_summary_keeps_only_card_fields(client, url):
 
 def test_detail_unknown_id_returns_404_and_malformed_id_400(client):
     assert client.get("/work/000000000000000000000000").status_code == 404
-    assert client.get("/patent/bad_id").status_code == 400
+    # Patent ids are strings (a hash or "PIV-..."), so any id is well formed; source products still need an ObjectId.
+    assert client.get("/patent/bad_id").status_code == 404
+    assert client.get("/source/bad_id/products").status_code == 400
 
 
 def test_geo_detail_leaves_related_lists_to_affiliations(client):

@@ -1,8 +1,10 @@
 import time
 import mongomock
 import pytest
+from quyca.exceptions import InvalidParamException
 from quyca.parsers.source_parser import parse_topic_filter
 from quyca.repositories.search_source_filters_repository import (
+    SUBJECTS_FILTER_PIPELINE,
     TOPICS_FILTER_PIPELINE,
     set_scimago_quartiles,
     set_apc_range,
@@ -10,7 +12,10 @@ from quyca.repositories.search_source_filters_repository import (
     set_publication_time,
     set_license_types,
     set_topics,
+    set_h_index_range,
+    set_subjects,
 )
+from quyca.repositories.base_repository import current_source_h_index, set_sort
 
 
 @pytest.mark.parametrize("quartile_filters", [None, ""])
@@ -333,4 +338,112 @@ def test_topics_filter_tree_counts_each_source_once_per_node():
                 }
             ],
         },
+    ]
+
+
+def ranked_sources_collection() -> mongomock.Collection:
+    now = int(time.time())
+    past, current = {"from_date": now - 2000, "to_date": now - 1000}, {"from_date": now - 1000, "to_date": now + 1000}
+    collection = mongomock.MongoClient()["impactu"]["sources"]
+    collection.insert_many(
+        [
+            {
+                "_id": "ecology-h80",
+                "ranking": [
+                    {"source": "scimago hindex", "rank": 10, **past},
+                    {"source": "scimago hindex", "rank": 80, **current},
+                ],
+                "subjects": [
+                    {
+                        "source": "scimago",
+                        "subjects": [{"name": "Ecology"}, {"name": "Ecology, Evolution, Behavior and Systematics"}],
+                    },
+                    {"source": "LCC", "subjects": [{"name": "Ecology"}]},
+                ],
+            },
+            {
+                "_id": "was-h90",
+                "ranking": [
+                    {"source": "scimago hindex", "rank": 90, **past},
+                    {"source": "scimago hindex", "rank": 20, **current},
+                ],
+                "subjects": [{"source": "LCC", "subjects": [{"name": "Plant ecology"}]}],
+            },
+            {"_id": "no-ranking"},
+        ]
+    )
+    return collection
+
+
+def ids(pipeline: list) -> list:
+    return [source["_id"] for source in ranked_sources_collection().aggregate(pipeline)]
+
+
+@pytest.mark.parametrize(
+    "h_index_range, expected",
+    [
+        (None, ["ecology-h80", "was-h90", "no-ranking"]),
+        ("50", ["ecology-h80"]),
+        ("85", []),
+        ("10,30", ["was-h90"]),
+        ("100, 20", ["ecology-h80", "was-h90"]),
+    ],
+)
+def test_set_h_index_range_uses_the_h_index_valid_today(h_index_range, expected):
+    pipeline: list = []
+
+    set_h_index_range(pipeline, h_index_range)
+
+    assert ids(pipeline) == expected
+
+
+@pytest.mark.parametrize("h_index_range", ["-1", "a", "1,2,3", "10,"])
+def test_set_h_index_range_rejects_what_is_not_one_or_two_whole_numbers(h_index_range):
+    with pytest.raises(InvalidParamException):
+        set_h_index_range([], h_index_range)
+
+
+def test_current_source_h_index_range_skips_sources_without_one():
+    pipeline = [
+        {"$project": {"h_index": current_source_h_index()}},
+        {"$match": {"h_index": {"$ne": None}}},
+        {"$group": {"_id": None, "min": {"$min": "$h_index"}, "max": {"$max": "$h_index"}}},
+    ]
+
+    assert list(ranked_sources_collection().aggregate(pipeline)) == [{"_id": None, "min": 20, "max": 80}]
+
+
+def test_sort_h_desc_puts_the_highest_current_h_index_first_and_sources_without_it_last():
+    pipeline: list = []
+
+    set_sort(pipeline, "h_desc", "sources")
+
+    assert ids(pipeline) == ["ecology-h80", "was-h90", "no-ranking"]
+
+
+@pytest.mark.parametrize(
+    "subjects, expected",
+    [
+        ("ecology", ["ecology-h80"]),
+        ("Ecology, Evolution, Behavior and Systematics", ["ecology-h80"]),
+        ("Plant ecology,Ecology", ["ecology-h80", "was-h90"]),
+        ("Ecology, Evolution, Behavior and Systematics,Plant ecology", ["ecology-h80", "was-h90"]),
+        ("Evolution", []),
+        ("Ecolog", []),
+        (",", ["ecology-h80", "was-h90", "no-ranking"]),
+    ],
+)
+def test_set_subjects_matches_whole_names_of_any_subject_list_ignoring_case(subjects, expected):
+    pipeline: list = []
+
+    set_subjects(pipeline, subjects)
+
+    assert ids(pipeline) == expected
+
+
+def test_subjects_filter_counts_each_source_once_per_name():
+    assert list(ranked_sources_collection().aggregate(SUBJECTS_FILTER_PIPELINE)) == [
+        {"_id": "Ecology", "count": 1},
+        {"_id": "Ecology, Evolution, Behavior and Systematics", "count": 1},
+        {"_id": "Plant ecology", "count": 1},
     ]
