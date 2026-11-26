@@ -34,6 +34,9 @@ def parse_available_filters(filters: Dict) -> Dict:
     if apc_ranges := filters.get("apc_range"):
         parsed_filters["apc_range"] = apc_ranges[0] if isinstance(apc_ranges, list) else apc_ranges
 
+    if h_index_range := filters.get("h_index_range"):
+        parsed_filters["h_index_range"] = h_index_range[0]
+
     if status := filters.get("status"):
         parsed_filters["status"] = parse_status_filter(status)
 
@@ -45,6 +48,13 @@ def parse_available_filters(filters: Dict) -> Dict:
 
     if topics := filters.get("topics"):
         parsed_filters["topics"] = parse_topic_filter(topics)
+
+    if subjects := filters.get("subjects"):
+        parsed_filters["subjects"] = [
+            {"title": subject["_id"], "value": subject["_id"], "count": subject["count"]}
+            for subject in subjects
+            if subject["_id"]
+        ]
 
     return parsed_filters
 

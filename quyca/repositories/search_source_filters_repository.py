@@ -1,7 +1,9 @@
+import re
 from datetime import datetime, timezone
 from quyca.constants.source_types import NORMALIZED_TYPE_MAPPING
 from quyca.models.base_model import QueryParams
 from quyca.clients.mongo import database
+from quyca.exceptions import InvalidParamException
 from quyca.repositories import base_repository, search_work_filters_repository
 
 # Each level of a topic, as (node, parent id). The domain is the root.
@@ -55,6 +57,16 @@ TOPICS_FILTER_PIPELINE: list[dict] = [
     },
 ]
 
+# Scimago, DOAJ (LCC) and Publindex subject names, each counted once per source.
+SUBJECTS_FILTER_PIPELINE: list[dict] = [
+    {"$project": {"subjects.subjects.name": 1}},
+    {"$unwind": "$subjects"},
+    {"$unwind": "$subjects.subjects"},
+    {"$group": {"_id": {"name": "$subjects.subjects.name", "source": "$_id"}}},
+    {"$group": {"_id": "$_id.name", "count": {"$sum": 1}}},
+    {"$sort": {"count": -1, "_id": 1}},
+]
+
 
 def build_sources_match(query_params: QueryParams) -> list[dict]:
     pipeline = base_repository.text_search_match(query_params.keywords)
@@ -89,6 +101,13 @@ def get_sources_available_filters(query_params: QueryParams) -> dict:
                     },
                     {"$project": {"_id": 0, "min_weeks": 1, "max_weeks": 1}},
                 ],
+                "h_index_range": [
+                    {"$match": {"ranking.source": "scimago hindex"}},
+                    {"$project": {"h_index": base_repository.current_source_h_index()}},
+                    {"$match": {"h_index": {"$ne": None}}},
+                    {"$group": {"_id": None, "min_h_index": {"$min": "$h_index"}, "max_h_index": {"$max": "$h_index"}}},
+                    {"$project": {"_id": 0, "min_h_index": 1, "max_h_index": 1}},
+                ],
                 "source_types": [
                     {
                         "$project": {
@@ -112,6 +131,7 @@ def get_sources_available_filters(query_params: QueryParams) -> dict:
                     {"$sort": {"_id": 1}},
                 ],
                 "topics": TOPICS_FILTER_PIPELINE,
+                "subjects": SUBJECTS_FILTER_PIPELINE,
             }
         }
     ]
@@ -177,6 +197,8 @@ def set_source_filters(pipeline: list, query_params: QueryParams) -> None:
     set_publication_time(pipeline, query_params.publication_time)
     set_license_types(pipeline, query_params.license_type)
     set_topics(pipeline, query_params.topics)
+    set_h_index_range(pipeline, query_params.h_index_range)
+    set_subjects(pipeline, query_params.subjects)
 
 
 def set_source_types(pipeline: list, type_filters: str | None) -> None:
@@ -385,3 +407,38 @@ def set_topics(pipeline: list, topic_filters: str | None) -> None:
     E.g topic_filters = "https://openalex.org/T10017,https://openalex.org/subfields/3304,https://openalex.org/domains/2"
     """
     search_work_filters_repository.set_topic_filters(pipeline, topic_filters, "topics")
+
+
+def set_h_index_range(pipeline: list, h_index_range: str | None) -> None:
+    """
+    Filters sources by their CURRENT Scimago h-index (the ranking valid today, as the quartiles), like apc_range:
+    "min,max", or a single value for the minimum.
+
+    E.g h_index_range = "50,200"
+    """
+    if not h_index_range:
+        return
+    values = [value.strip() for value in h_index_range.split(",")]
+    if len(values) > 2 or not all(value.isdigit() for value in values):
+        raise InvalidParamException(
+            f"Invalid h_index_range '{h_index_range}'. Expected <min> or <min>,<max>, e.g. 50,200"
+        )
+    limits = sorted(int(value) for value in values)
+    rank = {"$gte": limits[0], "$lte": limits[1]} if len(limits) == 2 else {"$gte": limits[0]}
+    now = int(datetime.now(timezone.utc).timestamp())
+    ranking = {"source": "scimago hindex", "rank": rank, "from_date": {"$lte": now}, "to_date": {"$gte": now}}
+    pipeline.append({"$match": {"ranking": {"$elemMatch": ranking}}})
+
+
+def set_subjects(pipeline: list, subject_filters: str | None) -> None:
+    """
+    Filters sources by the exact name of any of their Scimago, DOAJ (LCC) or Publindex subjects, ignoring case.
+    Names are separated by commas, like topics; the commas inside a name are always followed by a space, so only
+    the ones without it separate.
+
+    E.g subject_filters = "Ecology,Ecology, Evolution, Behavior and Systematics"
+    """
+    names = [name.strip() for name in re.split(r",(?!\s)", subject_filters or "") if name.strip()]
+    if names:
+        patterns = [re.compile(f"^{re.escape(name)}$", re.IGNORECASE) for name in names]
+        pipeline.append({"$match": {"subjects.subjects.name": {"$in": patterns}}})
