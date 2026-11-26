@@ -16,6 +16,8 @@ def get_work_by_id(work_id: str, pipeline_params: dict | None = None) -> Work:
     pipeline = [{"$match": {"_id": work_id}}]
     set_issn_to_pipeline(pipeline)
     base_repository.set_project(pipeline, (pipeline_params or {}).get("project"))
+    if authors_limit := (pipeline_params or {}).get("authors_limit"):
+        base_repository.set_authors_limit(pipeline, authors_limit)
 
     cursor = database["works"].aggregate(pipeline)
     work = next(cursor, None)

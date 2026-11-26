@@ -1,16 +1,14 @@
 from functools import partial
 import time
 
-from quyca.constants.summary_rules import WORK_SUMMARY_FIELDS
 from quyca.models.base_model import QueryParams
 from quyca.models.work_model import Work, Abstract
 from quyca.parsers.base_parser import build_entity_metadata, build_metadata, parse_authors
 from quyca.repositories import work_repository
 from quyca.services.base_service import (
-    build_pipeline_params,
+    SUMMARY_AUTHORS_LIMIT,
     build_works_pipeline_params,
     get_entity_data,
-    limit_authors,
     set_authors_affiliation_years,
     set_title_and_language,
     set_product_types,
@@ -23,15 +21,14 @@ from quyca.validators import search_validator
 
 
 def get_work_by_id(work_id: str, query_params: QueryParams) -> dict:
+    """The summary is the same detail with only the first authors: they are what makes a work heavy (4,909 authors
+    are 8.7 MB), and the detail page needs every other field."""
     start_time = time.time()
-    if query_params.view == "summary":
-        work = work_repository.get_work_by_id(work_id, build_pipeline_params("summary", WORK_SUMMARY_FIELDS))
-        return build_entity_metadata(work_parser.parse_works(get_entity_data([work], "summary"))[0], start_time)
-    work = work_repository.get_work_by_id(work_id)
+    authors_limit = {"authors_limit": SUMMARY_AUTHORS_LIMIT} if query_params.view == "summary" else None
+    work = work_repository.get_work_by_id(work_id, authors_limit)
     set_abstract(work)
     set_external_ids(work)
     set_external_urls(work)
-    limit_authors(work)
     set_authors_external_ids(work)
     set_authors_affiliation_years(work)
     set_title_and_language(work)
